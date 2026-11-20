@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Украшаем торт — прототип</title>
+<style>
+  :root { --ink:#334155; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; height:100%; background: linear-gradient(180deg,#fdf2f8,#e0f2fe 70%); font-family: Nunito, Rubik, system-ui, sans-serif; color:var(--ink); overflow:hidden; touch-action:none; user-select:none; }
+  #wrap { position:fixed; inset:0 0 var(--tray,215px) 0; overflow:hidden; }
+  #stage { position:absolute; left:50%; top:50%; width:960px; height:640px; margin:-320px 0 0 -480px; transform-origin:center; }
+  canvas { position:absolute; left:0; top:0; width:960px; height:640px; touch-action:none; }
+  #hint { position:absolute; left:500px; top:150px; font-size:80px; line-height:1; pointer-events:none; animation: bob .9s ease-in-out infinite; filter: drop-shadow(0 4px 4px rgba(0,0,0,.2)); }
+  @keyframes bob { 0%,100% { transform: translateY(0) rotate(-12deg); } 50% { transform: translateY(18px) rotate(-12deg); } }
+  #tray { position:fixed; left:0; right:0; bottom:0; padding:8px 8px 10px; display:flex; flex-direction:column; gap:7px; align-items:center; background:rgba(255,255,255,.55); backdrop-filter: blur(6px); border-radius:26px 26px 0 0; box-shadow:0 -4px 18px rgba(0,0,0,.08); z-index:5; }
+  .row { display:flex; gap:7px; justify-content:center; flex-wrap:wrap; }
+  button { font:inherit; border:0; padding:0; cursor:pointer; background:none; touch-action:manipulation; }
+  .tile { width:58px; height:58px; border-radius:20px; background:#fff; box-shadow:0 4px 0 rgba(0,0,0,.12); display:grid; place-items:center; transition: transform .15s; }
+  .tile img { max-width:46px; max-height:46px; object-fit:contain; pointer-events:none; }
+  .tile.on { transform: translateY(-4px) scale(1.1); box-shadow:0 6px 0 rgba(124,58,237,.35), 0 0 0 4px #7c3aed inset; }
+  .tab { width:68px; height:68px; border-radius:24px; background:#f1f5f9; }
+  .tab img { max-width:54px; max-height:54px; }
+  .tab.on { background:#fff; }
+  #opts .tile img { max-width:44px; max-height:44px; }
+  #opts.candles .tile img { max-height:50px; }
+  .fab { position:fixed; z-index:6; border-radius:50%; display:grid; place-items:center; color:#fff; }
+  .fab svg { width:52%; height:52%; }
+  #blow { right:12px; bottom:calc(var(--tray,215px) + 10px); width:92px; height:92px; background:#38bdf8; box-shadow:0 6px 0 #0369a1; display:none; animation: pulse 1.2s ease-in-out infinite; }
+  #blow.show { display:grid; }
+  #undo { left:12px; bottom:calc(var(--tray,215px) + 10px); width:62px; height:62px; background:#f59e0b; box-shadow:0 5px 0 #b45309; }
+  #clear { left:12px; bottom:calc(var(--tray,215px) + 84px); width:54px; height:54px; background:#ef4444; box-shadow:0 4px 0 #b91c1c; }
+  #mute { right:12px; top:12px; width:48px; height:48px; background:#fff; color:#475569; box-shadow:0 4px 0 rgba(0,0,0,.14); }
+  #mute .off { display:none; } #mute.muted .on { display:none; } #mute.muted .off { display:inline; }
+  @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12); } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c" width="1920" height="1280"></canvas>
+    <div id="hint">👆</div>
+  </div>
+</div>
+
+<div id="tray">
+  <div class="row" id="tabs"></div>
+  <div class="row" id="opts"></div>
+</div>
+<button id="blow" class="fab" aria-label="Задуть свечи">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h10.5a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 14h14.5a3 3 0 1 1-3 3"/><path d="M3 19h6"/></svg>
+</button>
+<button id="undo" class="fab" aria-label="Назад">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7L4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12"/></svg>
+</button>
+<button id="clear" class="fab" aria-label="Убрать всё">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>
+</button>
+<button id="mute" class="fab" aria-label="Звук">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><g class="on"><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18 6.5a7.6 7.6 0 0 1 0 11"/></g><g class="off"><path d="M16 9.5l5 5M21 9.5l-5 5"/></g></svg>
+</button>
+
+<script>
+// ================= данные =================
+const CAKES = ['pink','white','chocolate','blue','mint','yellow'];
+const ROSETTES = ['pink','white','blue','yellow','mint','chocolate'];
+const TOPPINGS = ['strawberry','cherry','blueberries','raspberry','macaron','donut','lollipop','heart','star','flower','gummy','chocolate'];
+const CANDLES = ['pink','blue','yellow','green','purple','red'];
+const META = {"cakes":{"pink":[683,644],"white":[683,644],"chocolate":[683,644],"blue":[683,644],"mint":[683,644],"yellow":[683,644]},"stand":{"stand":[820,447]}};
+const W = 960, H = 640;
+
+// ================= загрузка картинок =================
+const IMG = {};
+function load(key, src){ return new Promise(res => { const i = new Image(); i.onload = () => { IMG[key] = i; res(); }; i.onerror = () => res(); i.src = src; }); }
+const jobs = [load('stand','img/stand/stand.webp')];
+CAKES.forEach(c => jobs.push(load('cake_'+c, `img/cakes/${c}.webp`)));
+ROSETTES.forEach(c => jobs.push(load('ros_'+c, `img/rosettes/${c}.webp`)));
+TOPPINGS.forEach(c => jobs.push(load('top_'+c, `img/toppings/${c}.webp`)));
+CANDLES.forEach(c => jobs.push(load('can_'+c, `img/candles/${c}.webp`)));
+
+// ================= сцена =================
+const $ = s => document.querySelector(s);
+const cv = $('#c'), ctx = cv.getContext('2d'); ctx.scale(2,2);
+const stage = $('#stage');
+function fit(){
+  const tray = $('#tray').offsetHeight; document.documentElement.style.setProperty('--tray', tray+'px');
+  const k = Math.min(innerWidth/W, (innerHeight - tray)/H) * 0.98; stage.style.transform = `scale(${Math.max(k,.3)})`;
+}
+addEventListener('resize', fit);
+
+const STAND_W = 640, CAKE_W = 350;
+let standRect, cakeRect, cakeMask = null, cakeId = 'pink', cakeBounce = 0;
+function layout(){
+  const si = IMG.stand; const sh = si.naturalHeight * STAND_W / si.naturalWidth;
+  standRect = { x: W/2 - STAND_W/2, y: 635 - sh, w: STAND_W, h: sh };
+  placeCake(cakeId);
+}
+function placeCake(id){
+  cakeId = id; const ci = IMG['cake_'+id]; const ch = ci.naturalHeight * CAKE_W / ci.naturalWidth;
+  const baseY = standRect.y + standRect.h * 0.40;             // центр тарелки
+  cakeRect = { x: W/2 - CAKE_W/2, y: baseY - ch + 12, w: CAKE_W, h: ch };
+  const oc = document.createElement('canvas'); oc.width = Math.round(CAKE_W); oc.height = Math.round(ch);
+  const o = oc.getContext('2d', { willReadFrequently: true }); o.drawImage(ci, 0, 0, oc.width, oc.height);
+  cakeMask = { w: oc.width, h: oc.height, d: o.getImageData(0, 0, oc.width, oc.height).data };
+}
+const onCake = (x, y) => { if(!cakeMask) return false; const lx = Math.round(x - cakeRect.x), ly = Math.round(y - cakeRect.y);
+  return lx>=0 && ly>=0 && lx<cakeMask.w && ly<cakeMask.h && cakeMask.d[(ly*cakeMask.w+lx)*4+3] > 60; };
+const onTop = (x, y) => onCake(x, y) && y < cakeRect.y + cakeRect.h * 0.40;
+
+// ================= предметы на торте =================
+const items = [];                  // {type,id,x,y,rot,t0,lit,out}
+const SIZE = { rosette: 84, topping: 70, candleH: 118 };
+let blown = false, nextRot = () => (Math.random()-.5)*0.5;
+function itemSize(it){
+  const im = IMG[(it.type==='rosette'?'ros_':it.type==='topping'?'top_':'can_')+it.id]; if(!im) return {w:40,h:40};
+  if(it.type==='candle'){ const h = SIZE.candleH; return { w: im.naturalWidth*h/im.naturalHeight, h }; }
+  const w = it.type==='rosette' ? SIZE.rosette : SIZE.topping; return { w, h: im.naturalHeight*w/im.naturalWidth };
+}
+function anchorTopLeft(it, sz){ // rosette/candle — якорь внизу по центру, topping — по центру
+  return it.type==='topping' ? {x:-sz.w/2, y:-sz.h/2} : {x:-sz.w/2, y:-sz.h};
+}
+function hitItem(x, y, skipRosettes){
+  for(let i=items.length-1;i>=0;i--){ const it = items[i]; if(skipRosettes && it.type === 'rosette') continue; const sz = itemSize(it); const a = anchorTopLeft(it, sz);
+    if(x > it.x+a.x-6 && x < it.x+a.x+sz.w+6 && y > it.y+a.y-6 && y < it.y+a.y+sz.h+6) return it; }
+  return null;
+}
+
+// ================= звук =================
+const Snd = (() => {
+  let ac, master, muted = false;
+  try { muted = localStorage.getItem('cakeMuted') === '1'; } catch(e) {}
+  const init = () => { if(ac) return; const A = window.AudioContext || window.webkitAudioContext; if(!A) return; ac = new A(); master = ac.createGain(); master.gain.value = muted ? 0 : .7; master.connect(ac.destination); };
+  const ok = () => ac && ac.state !== 'closed';
+  const tone = (f, t0, dur, type, vol, f2) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t0);
+    if(f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur*.8);
+    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .015); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+    o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + .05); };
+  // «С днём рождения» (мелодия в ля-мажоре от соль): [нота Гц, длительность в долях]
+  const N = {G4:392,A4:440,B4:493.9,C5:523.3,D5:587.3,E5:659.3,F5:698.5,G5:784};
+  const SONG = [['G4',.75],['G4',.25],['A4',1],['G4',1],['C5',1],['B4',2],['G4',.75],['G4',.25],['A4',1],['G4',1],['D5',1],['C5',2],
+                ['G4',.75],['G4',.25],['G5',1],['E5',1],['C5',1],['B4',1],['A4',1],['F5',.75],['F5',.25],['E5',1],['C5',1],['D5',1],['C5',2]];
+  return {
+    resume(){ init(); if(ok() && ac.state === 'suspended') ac.resume(); },
+    pop(){ if(ok()) tone(520, ac.currentTime, .09, 'sine', .2, 880); },
+    squish(){ if(ok()) tone(300 + Math.random()*120, ac.currentTime, .1, 'sine', .14, 170); },
+    place(){ if(ok()){ const t = ac.currentTime; tone(420, t, .08, 'triangle', .22, 760); tone(760, t+.07, .1, 'sine', .12); } },
+    spark(){ if(ok()){ const t = ac.currentTime; tone(900, t, .12, 'sine', .12, 1500); } },
+    whoosh(){ if(!ok()) return; const t = ac.currentTime, len = ac.sampleRate*.6, b = ac.createBuffer(1, len, ac.sampleRate), d = b.getChannelData(0);
+      for(let i=0;i<len;i++) d[i] = (Math.random()*2-1) * Math.sin(Math.PI*i/len);
+      const s = ac.createBufferSource(); s.buffer = b; const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(700, t); f.frequency.exponentialRampToValueAtTime(2200, t+.5);
+      const g = ac.createGain(); g.gain.value = .35; s.connect(f); f.connect(g); g.connect(master); s.start(t); },
+    song(){ if(!ok()) return; let t = ac.currentTime + .15; const beat = .36;
+      for(const [n, b] of SONG){ tone(N[n], t, b*beat*.95, 'triangle', .22); tone(N[n]/2, t, b*beat*.9, 'sine', .08); t += b*beat; } },
+    setMuted(m){ muted = m; try { localStorage.setItem('cakeMuted', m ? '1' : '0'); } catch(e) {} if(ok()) master.gain.setTargetAtTime(m ? 0 : .7, ac.currentTime, .03); },
+    get muted(){ return muted; },
+  };
+})();
+addEventListener('pointerdown', () => Snd.resume(), true);
+$('#mute').classList.toggle('muted', Snd.muted);
+$('#mute').onclick = () => { Snd.resume(); Snd.setMuted(!Snd.muted); $('#mute').classList.toggle('muted', Snd.muted); };
+
+// ================= интерфейс (только картинки) =================
+let tab = 'pipe', sel = { cake:'pink', pipe:'pink', top:'strawberry', candle:'pink' }, everActed = false;
+const TABS = [['cake','cakes/pink'],['pipe','rosettes/pink'],['top','toppings/strawberry'],['candle','candles/pink']];
+const LIST = { cake: CAKES, pipe: ROSETTES, top: TOPPINGS, candle: CANDLES };
+const PATH = { cake: 'cakes', pipe: 'rosettes', top: 'toppings', candle: 'candles' };
+function buildTabs(){ const el = $('#tabs'); el.innerHTML = ''; for(const [k, p] of TABS){ const b = document.createElement('button'); b.className = 'tile tab'+(k===tab?' on':''); b.setAttribute('aria-label', k);
+  b.innerHTML = `<img src="img/${p}.webp" alt="">`; b.onclick = () => { Snd.pop(); tab = k; buildTabs(); buildOpts(); }; el.append(b); } }
+function buildOpts(){ const el = $('#opts'); el.innerHTML = ''; el.className = 'row' + (tab==='candle' ? ' candles' : ''); for(const id of LIST[tab]){ const b = document.createElement('button'); b.className = 'tile'+(id===sel[tab]?' on':'');
+  b.innerHTML = `<img src="img/${PATH[tab]}/${id}.webp" alt="">`; b.setAttribute('aria-label', id);
+  b.onclick = () => { Snd.pop(); sel[tab] = id; if(tab==='cake'){ placeCake(id); cakeBounce = 1; } buildOpts(); }; el.append(b); }
+  fit(); }
+
+// ================= ввод =================
+function toStage(e){ const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+let drag = null, stroke = null, binHot = false;
+const BIN = { x: 880, y: 560, r: 52 };
+function addItem(type, id, x, y){
+  if(items.length > 260) items.shift();
+  const it = { type, id, x, y, rot: type==='candle' ? 0 : nextRot(), t0: performance.now(), lit: type==='candle', out: 0, outAt: 0 };
+  items.push(it); if(type==='candle') blown = false; return it;
+}
+// тап — ставит новое; потянуть за стоящую вещь (с места на >10px) — двигает её; крем (rosette) не двигается
+let pending = null;
+function tabAction(p, allowStroke){
+  if(tab === 'pipe' && onCake(p.x, p.y)){ if(allowStroke) stroke = { lx: p.x, ly: p.y }; addItem('rosette', sel.pipe, p.x, p.y); Snd.squish(); return true; }
+  if(tab === 'top' && onCake(p.x, p.y)){ addItem('topping', sel.top, p.x, p.y); Snd.place(); return true; }
+  if(tab === 'candle' && onTop(p.x, p.y)){ addItem('candle', sel.candle, p.x, p.y); Snd.place(); return true; }
+  if(onCake(p.x, p.y)) cakeBounce = 1;
+  return false;
+}
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault(); cv.setPointerCapture(e.pointerId); const p = toStage(e); everActed = true; $('#hint').style.display = 'none';
+  const hit = hitItem(p.x, p.y, true);
+  if(hit){ pending = { it: hit, dx: hit.x - p.x, dy: hit.y - p.y, sx: p.x, sy: p.y }; return; }
+  tabAction(p, true);
+});
+cv.addEventListener('pointermove', e => {
+  const p = toStage(e);
+  if(pending && !drag && Math.hypot(p.x - pending.sx, p.y - pending.sy) > 10){
+    drag = pending; pending = null; items.splice(items.indexOf(drag.it), 1); items.push(drag.it); drag.it.t0 = performance.now(); Snd.pop(); }
+  if(drag){ drag.it.x = p.x + drag.dx; drag.it.y = p.y + drag.dy; binHot = Math.hypot(p.x - BIN.x, p.y - BIN.y) < BIN.r + 20; return; }
+  if(stroke && onCake(p.x, p.y)){ const d = Math.hypot(p.x - stroke.lx, p.y - stroke.ly);
+    if(d > 30){ const n = Math.floor(d / 30); for(let i=1;i<=n;i++){ const t = i*30/d; addItem('rosette', sel.pipe, stroke.lx + (p.x-stroke.lx)*t, stroke.ly + (p.y-stroke.ly)*t); }
+      stroke.lx = p.x; stroke.ly = p.y; Snd.squish(); } }
+});
+const endPtr = e => {
+  if(pending){ tabAction({ x: pending.sx, y: pending.sy }, false); pending = null; }      // это был тап по стоящей вещи — ставим новое
+  if(drag){ const p = toStage(e); if(Math.hypot(p.x - BIN.x, p.y - BIN.y) < BIN.r + 20){ items.splice(items.indexOf(drag.it), 1); Snd.pop(); } else if(drag.it.type==='candle') drag.it.t0 = performance.now(); }
+  drag = null; stroke = null; binHot = false;
+};
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+
+$('#undo').onclick = () => { Snd.resume(); if(items.length){ items.pop(); Snd.pop(); } };
+$('#clear').onclick = () => { Snd.resume(); items.length = 0; blown = false; Snd.pop(); };
+$('#blow').onclick = () => { Snd.resume(); blow(); };
+
+// ================= задуваем свечи =================
+const smoke = [], conf = [];
+const CONF = ['#f43f5e','#f59e0b','#22c55e','#3b82f6','#a855f7','#facc15'];
+function blow(){
+  const lit = items.filter(i => i.type==='candle' && i.lit && !i.outAt); if(!lit.length) return;
+  Snd.whoosh(); const now = performance.now();
+  lit.forEach((c, i) => { c.outAt = now + 120 + i*140; });
+  const last = Math.max(...lit.map(c => c.outAt));
+  setTimeout(() => { blown = true; celebrate(); }, last - now + 450);
+}
+function celebrate(){ Snd.song(); cakeBounce = 1;
+  for(let i=0;i<70;i++) conf.push({ x: W/2 + (Math.random()-.5)*200, y: cakeRect.y, vx: (Math.random()-.5)*620, vy: -(220+Math.random()*420), life: 2+Math.random()*.8, c: CONF[i%CONF.length], r: 3+Math.random()*5, rot: Math.random()*6 }); }
+
+// ================= рисование =================
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const ease = t => { t = clamp(t,0,1); return 1 + 2.7*Math.pow(t-1,3) + 1.7*Math.pow(t-1,2); };   // «выпрыгивание»
+function drawFlame(x, y, t, out){
+  const s = 1 - out; if(s <= .02) return;
+  const fl = 1 + Math.sin(t*14 + x)*.08 + Math.sin(t*23 + x*2)*.05;
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s*fl);
+  const g = ctx.createRadialGradient(0, -14, 1, 0, -14, 34); g.addColorStop(0, 'rgba(255,230,120,.55)'); g.addColorStop(1, 'rgba(255,200,80,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -14, 34, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0, -38); ctx.bezierCurveTo(14, -20, 12, -2, 0, 0); ctx.bezierCurveTo(-12, -2, -14, -20, 0, -38);
+  const fg = ctx.createLinearGradient(0, -38, 0, 0); fg.addColorStop(0, '#fde047'); fg.addColorStop(.6, '#fb923c'); fg.addColorStop(1, '#ef4444'); ctx.fillStyle = fg; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0, -24); ctx.bezierCurveTo(6, -14, 5, -3, 0, -1); ctx.bezierCurveTo(-5, -3, -6, -14, 0, -24); ctx.fillStyle = '#fff7c2'; ctx.fill();
+  ctx.restore();
+}
+let last = performance.now();
+function frame(now){
+  const dt = Math.min((now - last)/1000, .05); last = now; const t = now/1000;
+  ctx.clearRect(0, 0, W, H);
+  // стол
+  const tg = ctx.createLinearGradient(0, 520, 0, H); tg.addColorStop(0, '#fde68a'); tg.addColorStop(1, '#fbbf24');
+  ctx.fillStyle = tg; ctx.beginPath(); ctx.roundRect(0, 585, W, 70, 26); ctx.fill();
+  if(IMG.stand){
+    ctx.fillStyle = 'rgba(120,70,20,.18)'; ctx.beginPath(); ctx.ellipse(W/2, 612, 250, 16, 0, 0, 7); ctx.fill();
+    ctx.drawImage(IMG.stand, standRect.x, standRect.y, standRect.w, standRect.h);
+  }
+  // торт с «подпрыгиванием»
+  cakeBounce = Math.max(0, cakeBounce - dt*1.6);
+  const bs = 1 + Math.sin(cakeBounce*Math.PI*3) * .06 * cakeBounce;
+  const cx = cakeRect.x + cakeRect.w/2, cb = cakeRect.y + cakeRect.h - 12;
+  ctx.save(); ctx.translate(cx, cb); ctx.scale(1/bs, bs); ctx.translate(-cx, -cb);
+  ctx.drawImage(IMG['cake_'+cakeId], cakeRect.x, cakeRect.y, cakeRect.w, cakeRect.h);
+  // предметы по глубине (чем ниже на экране, тем ближе)
+  const order = items.slice().sort((a,b) => a.y - b.y);
+  for(const it of order){
+    const sz = itemSize(it), a = anchorTopLeft(it, sz); const k = ease((now - it.t0)/320);
+    const im = IMG[(it.type==='rosette'?'ros_':it.type==='topping'?'top_':'can_')+it.id]; if(!im) continue;
+    const grabbed = drag && drag.it === it;
+    ctx.save(); ctx.translate(it.x, it.y - (grabbed ? 10 : 0)); ctx.rotate(it.rot); ctx.scale(k * (grabbed ? 1.1 : 1), k * (grabbed ? 1.1 : 1));
+    if(grabbed){ ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 8; }
+    ctx.drawImage(im, a.x, a.y, sz.w, sz.h); ctx.restore();
+    if(it.type === 'candle'){
+      if(it.outAt && now >= it.outAt && it.lit){ it.out = clamp((now - it.outAt)/350, 0, 1);
+        if(!it._smoked){ it._smoked = true; for(let i=0;i<7;i++) smoke.push({ x: it.x + (Math.random()-.5)*6, y: it.y - sz.h - 6, vx: (Math.random()-.5)*14, vy: -(30+Math.random()*30), life: 1.3+Math.random()*.6, r: 5+Math.random()*5 }); }
+        if(it.out >= 1) it.lit = false; }
+      if(it.lit || it.out < 1) drawFlame(it.x, it.y - sz.h*k + 4, t, it.out);
+    }
+  }
+  ctx.restore();
+  // дым
+  for(let i=smoke.length-1;i>=0;i--){ const s = smoke[i]; s.life -= dt; if(s.life<=0){ smoke.splice(i,1); continue; }
+    s.x += s.vx*dt; s.y += s.vy*dt; s.r += dt*8; ctx.fillStyle = `rgba(180,180,190,${clamp(s.life/1.6,0,1)*.45})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill(); }
+  // конфетти
+  for(let i=conf.length-1;i>=0;i--){ const p = conf[i]; p.life -= dt; if(p.life<=0){ conf.splice(i,1); continue; }
+    p.vy += 560*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .99; p.rot += dt*8;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c; ctx.globalAlpha = clamp(p.life*2,0,1); ctx.fillRect(-p.r, -p.r/2, p.r*2, p.r); ctx.restore(); }
+  // корзина при перетаскивании
+  if(drag){ ctx.save(); ctx.translate(BIN.x, BIN.y); ctx.scale(binHot ? 1.25 : 1, binHot ? 1.25 : 1);
+    ctx.fillStyle = binHot ? '#ef4444' : 'rgba(239,68,68,.75)'; ctx.beginPath(); ctx.arc(0, 0, 46, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(-18, -12); ctx.lineTo(18, -12); ctx.moveTo(-6, -12); ctx.lineTo(-6, -20); ctx.lineTo(6, -20); ctx.lineTo(6, -12);
+    ctx.moveTo(-14, -12); ctx.lineTo(-11, 20); ctx.lineTo(11, 20); ctx.lineTo(14, -12); ctx.stroke(); ctx.restore(); }
+  // кнопка «задуть» только когда есть горящие свечи
+  $('#blow').classList.toggle('show', items.some(i => i.type==='candle' && i.lit && !i.outAt));
+  requestAnimationFrame(frame);
+}
+
+// ================= старт =================
+$('#undo').style.display = '';
+Promise.all(jobs).then(() => { layout(); buildTabs(); buildOpts(); fit(); requestAnimationFrame(frame); });
+</script>
+</body>
+</html>

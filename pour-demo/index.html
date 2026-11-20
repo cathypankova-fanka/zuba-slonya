@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Наливаем из чайника — прототип</title>
+<style>
+  :root { --bg1:#fdf2f8; --bg2:#e0f2fe; --ink:#334155; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; height:100%; background: linear-gradient(180deg,var(--bg2),var(--bg1)); font-family: Nunito, Rubik, system-ui, sans-serif; color:var(--ink); overflow:hidden; touch-action:none; user-select:none; }
+  #wrap { position:fixed; inset:0 0 160px 0; overflow:hidden; }
+  #stage { position:absolute; left:50%; top:50%; width:960px; height:640px; margin:-320px 0 0 -480px; transform-origin:center; }
+  #stage > * { position:absolute; }
+  #table { left:0; right:0; bottom:0; height:40px; background: linear-gradient(180deg,#fde68a,#fbbf24); border-radius:24px 24px 0 0; box-shadow:0 -6px 0 rgba(255,255,255,.5) inset; }
+  #shadow { height:22px; background: radial-gradient(closest-side, rgba(100,60,20,.28), transparent); border-radius:50%; }
+  #splash { display:none; }
+  #rim { height:11px; border-radius:50%; opacity:0; pointer-events:none; box-shadow:0 0 0 2px rgba(255,255,255,.55) inset; }
+  #card { left:22px; top:190px; width:190px; padding:12px 12px 10px; background:#fff; border-radius:26px; box-shadow:0 10px 24px rgba(0,0,0,.18); text-align:center;
+          opacity:0; transform:scale(.5) rotate(-10deg); transition:opacity .35s, transform .55s cubic-bezier(.34,1.56,.64,1); pointer-events:none; }
+  #card.show { opacity:1; transform:scale(1) rotate(-3deg); }
+  #card img { width:100%; display:block; }
+  #cardName { font-weight:800; font-size:18px; margin-top:4px; }
+  #glassFront, #teapot, #steam1, #steam2, #splash { pointer-events:none; }
+  #teapot { cursor:grab; pointer-events:auto; will-change: transform; }
+  #hud { display:none; }
+  #bar { left:50%; top:14px; width:240px; height:18px; margin-left:-120px; background:rgba(255,255,255,.75); border-radius:10px; overflow:hidden; box-shadow:0 0 0 3px #fff inset, 0 3px 0 rgba(0,0,0,.08); }
+  #barFill { height:100%; width:0%; border-radius:10px; }
+  #cardName { display:none; }
+  #hint { left:610px; top:20px; font-size:78px; line-height:1; pointer-events:none; animation: bob .9s ease-in-out infinite; filter: drop-shadow(0 4px 4px rgba(0,0,0,.2)); }
+  @keyframes bob { 0%,100% { transform: translateY(0) rotate(-12deg); } 50% { transform: translateY(16px) rotate(-12deg); } }
+  #ui { position:fixed; left:0; right:0; bottom:8px; display:flex; flex-direction:column; gap:6px; align-items:center; z-index:5; }
+  .row { display:flex; gap:8px; justify-content:center; padding:0 8px; }
+  button { font:inherit; border:0; padding:0; cursor:pointer; background:none; touch-action:manipulation; }
+  .tile { width:68px; height:68px; border-radius:22px; background:#fff; box-shadow:0 4px 0 rgba(0,0,0,.12), 0 0 0 4px var(--ring,#fff) inset; display:grid; place-items:center; transition: transform .15s; }
+  .tile img { width:56px; height:56px; object-fit:contain; pointer-events:none; }
+  .tile.on { transform: translateY(-5px) scale(1.12); box-shadow:0 6px 0 rgba(124,58,237,.35), 0 0 0 5px #7c3aed inset; }
+  .tile.cat { width:64px; height:64px; background:#f1f5f9; }
+  .tile.cat img { width:50px; height:50px; }
+  .fab { position:fixed; z-index:6; border-radius:50%; display:grid; place-items:center; color:#fff; }
+  #hold { right:12px; bottom:168px; width:88px; height:88px; background:#22c55e; box-shadow:0 6px 0 #15803d; animation: pulse 1.4s ease-in-out infinite; }
+  #hold.down { transform: translateY(4px); box-shadow:0 2px 0 #15803d; animation:none; }
+  #reset { left:12px; bottom:168px; width:64px; height:64px; background:#f59e0b; box-shadow:0 5px 0 #b45309; }
+  #reset.pulse { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12); } }
+  .fab svg { width:52%; height:52%; }
+  #mute { right:12px; top:12px; width:48px; height:48px; background:#fff; color:#475569; box-shadow:0 4px 0 rgba(0,0,0,.14); }
+  #mute .off { display:none; } #mute.muted .on { display:none; } #mute.muted .off { display:inline; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <div id="table"></div>
+    <div id="shadow"></div>
+    <canvas id="liquid"></canvas>
+    <svg id="streamSvg" width="960" height="640" viewBox="0 0 960 640" style="left:0;top:0;pointer-events:none">
+      <defs>
+        <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+          <stop id="sg0" offset="0" stop-color="#B45309"/><stop id="sg1" offset="1" stop-color="#78350F"/>
+        </linearGradient>
+      </defs>
+      <path id="streamBody" d="" fill="none" stroke="url(#sg)" stroke-linecap="round" stroke-width="0"/>
+      <path id="streamShine" d="" fill="none" stroke="#fff" stroke-opacity=".55" stroke-linecap="round" stroke-width="0" stroke-dasharray="18 14"/>
+    </svg>
+    <img id="glassFront" src="img/glass.webp" alt="">
+    <div id="rim"></div>
+    <img id="steam1" src="img/steam.webp" alt="">
+    <img id="steam2" src="img/steam.webp" alt="">
+    <img id="teapot" src="img/teapot.webp" alt="" draggable="false">
+    <img id="splash" src="img/splash.webp" alt="">
+    <canvas id="fx" style="left:0;top:0;width:960px;height:640px;pointer-events:none"></canvas>
+    <div id="card"><img id="cardImg" src="" alt=""><div id="cardName"></div></div>
+    <div id="hint">👆</div>
+    <div id="hud"></div>
+    <div id="bar"><div id="barFill"></div></div>
+  </div>
+</div>
+
+<div id="ui">
+  <div class="row" id="cats"></div>
+  <div class="row" id="drinks"></div>
+</div>
+<button id="hold" class="fab" aria-label="Налить">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c3.2 4.2 6 7.4 6 11a6 6 0 0 1-12 0c0-3.6 2.8-6.8 6-11z"/></svg>
+</button>
+<button id="mute" class="fab" aria-label="Звук">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><g class="on"><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18 6.5a7.6 7.6 0 0 1 0 11"/></g><g class="off"><path d="M16 9.5l5 5M21 9.5l-5 5"/></g></svg>
+</button>
+<button id="reset" class="fab" aria-label="Ещё раз">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v5h-5"/></svg>
+</button>
+
+<script>
+// ---- данные игры (liquidTop / liquidBottom из кода anutka-faceart) ----
+const CATS = { tea:'Чай', coffee:'Кофе', juice:'Сок', cocktail:'Коктейль' };
+const DRINKS = [
+ ['tea_black','tea','Чёрный чай','#B45309','#78350F'],['tea_green','tea','Зелёный чай','#A3E635','#65A30D'],
+ ['tea_berry','tea','Малиновый','#FB7185','#BE123C'],['tea_buckthorn','tea','Облепиховый','#FBBF24','#EA580C'],
+ ['tea_chamomile','tea','Ромашковый','#FDE047','#EAB308'],
+ ['coffee_latte','coffee','Латте','#D6A374','#7C4A2D'],['coffee_cocoa','coffee','Какао','#8B5A3C','#4A2511'],
+ ['coffee_cappuccino','coffee','Капучино','#B07D56','#5C341E'],['coffee_strawberry','coffee','Ягодный раф','#F9A8D4','#DB2777'],
+ ['coffee_caramel','coffee','Карамель','#E6A962','#92400E'],
+ ['juice_orange','juice','Апельсиновый','#FB923C','#EA580C'],['juice_apple','juice','Яблочный','#BEF264','#84CC16'],
+ ['juice_cherry','juice','Вишнёвый','#F43F5E','#9F1239'],['juice_pineapple','juice','Ананасовый','#FEF08A','#EAB308'],
+ ['juice_carrot','juice','Морковный','#FDBA74','#F97316'],
+ ['cocktail_berry','cocktail','Клубничный','#FDA4AF','#E11D48'],['cocktail_lagoon','cocktail','Голубая лагуна','#67E8F9','#0284C7'],
+ ['cocktail_tropical','cocktail','Тропики','#FDE047','#F43F5E'],['cocktail_banana','cocktail','Банановый','#FEF9C3','#FACC15'],
+ ['cocktail_mint','cocktail','Мятный микс','#6EE7B7','#059669'],
+].map(([id,cat,name,top,bottom])=>({id,cat,name,top,bottom}));
+
+// ---- размеры картинок (из pour-demo/img/meta.json) ----
+const META = { teapot:{w:836,h:632,spout:{x:27,y:182},bottom:604}, glass:{w:479,h:618,innerTop:32,innerBottom:513},
+               mug:{w:706,h:582,rimY:27,rimL:89,rimR:437}, splash:{w:801,h:444} };
+const TW = 400, GW = 215, MW = 250;             // ширины на сцене: чайник, стакан, кружка
+const ts = TW/META.teapot.w;
+const GROUND = 598;
+const THETA_MAX = 34;                          // макс. наклон, градусы (против часовой)
+const POUR_START = 17;                         // с какого угла начинает литься
+const FILL_SECONDS = 4.5;
+
+const $ = s => document.querySelector(s);
+const stage = $('#stage'), teapot = $('#teapot'), glassFront = $('#glassFront');
+const liquid = $('#liquid'), lctx = liquid.getContext('2d');
+const fx = $('#fx'), fctx = fx.getContext('2d');
+
+// сцена подгоняется под экран
+function fit(){ const k = Math.min(innerWidth/960, (innerHeight-160)/640)*0.98; stage.style.transform = `scale(${Math.max(k,.3)})`; }
+addEventListener('resize', fit); fit();
+
+// геометрия: поворот вокруг центра дна, против часовой стрелки
+const pivot = { x: TW*0.5, y: META.teapot.bottom*ts };      // в координатах картинки чайника
+const spoutLocal = { x: META.teapot.spout.x*ts, y: META.teapot.spout.y*ts };
+function rotCCW(p, a){ const r = a*Math.PI/180, dx=p.x-pivot.x, dy=p.y-pivot.y;
+  return { x: pivot.x + dx*Math.cos(r) + dy*Math.sin(r), y: pivot.y - dx*Math.sin(r) + dy*Math.cos(r) }; }
+const tipMax0 = rotCCW(spoutLocal, THETA_MAX);              // носик при макс. наклоне, если чайник в (0,0)
+const teapotLeft = 500;
+fx.width = 1920; fx.height = 1280; fctx.scale(2,2);
+
+// посуда: стеклянный стакан (видно жидкость) или керамическая кружка (жидкость не видно, виден край)
+const mkGlass = (img, maskSrc, nw, nh, it, ib, cxNat, w) => { const sc = w/nw, m = new Image(); m.src = maskSrc;
+  return { kind:'glass', img, maskImg:m, w, sc, h:nh*sc, cx:cxNat*sc, mouthY:it*sc, innerTopPx:it*sc, innerBotPx:ib*sc }; };
+const VESSELS = {
+  glass:  mkGlass('img/glass.webp',  'img/glass_inner.webp',  479, 618, 32, 513, 479/2, 215),   // сок, коктейль
+  cup:    mkGlass('img/cup.webp',    'img/cup_inner.webp',   1111, 808, 34, 671, 453.2, 260),   // чай (чашка)
+  cupmug: mkGlass('img/cupmug.webp', 'img/cupmug_inner.webp', 1107, 1165, 35, 981, 474.6, 205), // кофе (высокая кружка)
+  mug:   { kind:'mug', img:'img/mug.webp', w:MW, sc:MW/META.mug.w, h:META.mug.h*MW/META.mug.w,        // керамическая (запасная)
+           cx:((META.mug.rimL+META.mug.rimR)/2)*MW/META.mug.w, mouthY:META.mug.rimY*MW/META.mug.w },
+};
+let V = VESSELS.glass, vesselTop = 0, vesselLeft = 0, teapotTop = 0, landX = 0, innerTopPx = 0, innerBotPx = 0;
+function layout(kind){
+  V = VESSELS[kind]; vesselTop = GROUND - V.h;
+  teapotTop = (vesselTop - 22) - tipMax0.y;                  // носик в наклоне — над краем посуды
+  landX = (teapotLeft + tipMax0.x) - 46;                      // куда падает струя
+  vesselLeft = landX - V.cx;
+  Object.assign(teapot.style, { left: teapotLeft+'px', top: teapotTop+'px', width: TW+'px', transformOrigin: `${pivot.x}px ${pivot.y}px` });
+  glassFront.src = V.img;
+  Object.assign(glassFront.style, { left: vesselLeft+'px', top: vesselTop+'px', width: V.w+'px' });
+  Object.assign($('#shadow').style, { left: (vesselLeft-10)+'px', top: (GROUND-10)+'px', width: (V.w+20)+'px' });
+  if(V.kind==='glass'){
+    innerTopPx = V.innerTopPx; innerBotPx = V.innerBotPx;
+    Object.assign(liquid.style, { display:'', left: vesselLeft+'px', top: vesselTop+'px', width: V.w+'px', height: V.h+'px' });
+    liquid.width = Math.round(V.w*2); liquid.height = Math.round(V.h*2);
+    $('#rim').style.display = 'none';
+  } else {
+    liquid.style.display = 'none';
+    const rl = META.mug.rimL*V.sc, rr = META.mug.rimR*V.sc;
+    Object.assign($('#rim').style, { display:'', left:(vesselLeft+rl+6)+'px', width:(rr-rl-12)+'px', top:(vesselTop+V.mouthY-4)+'px' });
+  }
+}
+const surfaceAbsY = lvl => V.kind==='glass' ? vesselTop + innerBotPx - lvl*(innerBotPx-innerTopPx) : vesselTop + V.mouthY;
+
+
+// ---- звук: синтез в браузере (WebAudio), файлов нет ----
+const Snd = (() => {
+  let ctx, master, pourGain, pourBP, bodyGain, muted = false;
+  try { muted = localStorage.getItem('pourMuted') === '1'; } catch(e) {}
+  function init(){
+    if(ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext; if(!AC) return;
+    ctx = new AC(); master = ctx.createGain(); master.gain.value = muted ? 0 : 0.7; master.connect(ctx.destination);
+    const buf = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate), d = buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    // «шум воды»: полосовой фильтр, частота растёт по мере наполнения
+    pourBP = ctx.createBiquadFilter(); pourBP.type='bandpass'; pourBP.frequency.value=900; pourBP.Q.value=0.8;
+    pourGain = ctx.createGain(); pourGain.gain.value = 0;
+    const low = ctx.createBiquadFilter(); low.type='lowpass'; low.frequency.value=380;
+    bodyGain = ctx.createGain(); bodyGain.gain.value = 0;
+    src.connect(pourBP); pourBP.connect(pourGain); pourGain.connect(master);
+    src.connect(low); low.connect(bodyGain); bodyGain.connect(master);
+    src.start();
+  }
+  const ok = () => ctx && ctx.state !== 'closed';
+  function resume(){ init(); if(ok() && ctx.state === 'suspended') ctx.resume(); }
+  function tone(freq, t0, dur, type, vol, f2){
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(freq, t0);
+    if(f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur*0.8);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  return {
+    resume,
+    update(flow, level){                                  // каждый кадр
+      if(!ok()) return; const t = ctx.currentTime;
+      pourGain.gain.setTargetAtTime(flow*0.5, t, 0.07);
+      bodyGain.gain.setTargetAtTime(flow*0.35, t, 0.1);
+      pourBP.frequency.setTargetAtTime(750 + level*1700, t, 0.12);
+    },
+    bloop(level){                                         // пузырьки/бульканье
+      if(!ok()) return; const t = ctx.currentTime, f = 260 + Math.random()*420 + level*520;
+      tone(f, t, 0.11, 'sine', 0.16, f*1.9);
+    },
+    pop(){ if(!ok()) return; const t = ctx.currentTime; tone(520, t, 0.09, 'sine', 0.22, 880); },   // выбор плитки
+    chime(){ if(!ok()) return; const t = ctx.currentTime; [523.25, 659.25, 783.99, 1046.5].forEach((f,i)=> tone(f, t + i*0.11, 0.55, 'triangle', 0.2)); },
+    setMuted(m){ muted = m; try { localStorage.setItem('pourMuted', m ? '1' : '0'); } catch(e) {}
+      if(ok()) master.gain.setTargetAtTime(m ? 0 : 0.7, ctx.currentTime, 0.03); },
+    get muted(){ return muted; },
+    get state(){ return ctx ? ctx.state : 'нет'; },
+  };
+})();
+addEventListener('pointerdown', () => Snd.resume(), true);
+addEventListener('keydown', () => Snd.resume(), true);
+$('#mute').classList.toggle('muted', Snd.muted);
+$('#mute').addEventListener('click', () => { Snd.resume(); Snd.setMuted(!Snd.muted); $('#mute').classList.toggle('muted', Snd.muted); });
+
+// ---- состояние ----
+let curCat='tea';
+let everHeld = false;
+let drink = DRINKS[0], level = 0, tilt = 0, target = 0, flow = 0, holding = false, done = false, t0 = performance.now(), last = t0;
+const parts = [], conf = [];
+const CONF = ['#f43f5e','#f59e0b','#22c55e','#3b82f6','#a855f7','#facc15'];
+function burst(){ for(let i=0;i<46;i++) conf.push({x:landX+(Math.random()*40-20), y:vesselTop-10, vx:(Math.random()-.5)*420, vy:-(180+Math.random()*340), life:1.6+Math.random()*.6, c:CONF[i%CONF.length], r:3+Math.random()*4, rot:Math.random()*6}); }
+
+function hex2rgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function setDrink(d){ drink = d;
+  if(d.cat!==curCat){ curCat=d.cat; buildCats(); buildDrinks(); }
+  const kind = d.cat==='tea' ? 'cup' : d.cat==='coffee' ? 'cupmug' : 'glass';
+  if(VESSELS[kind]!==V || !vesselTop) layout(kind);
+  reset();
+  $('#cardImg').src = 'img/recipes/'+d.id+'.webp';
+  $('#rim').style.background = `radial-gradient(closest-side, ${d.top}, ${d.bottom})`;
+  $('#sg0').setAttribute('stop-color', d.top); $('#sg1').setAttribute('stop-color', d.bottom);
+  $('#barFill').style.background = `linear-gradient(90deg,${d.top},${d.bottom})`;
+  const hot = d.cat==='tea' || d.cat==='coffee';
+  $('#steam1').style.display = $('#steam2').style.display = hot ? '' : 'none';
+  document.querySelectorAll('#drinks .tile').forEach(b=>b.classList.toggle('on', b.dataset.id===d.id));
+}
+function reset(){ level=0; done=false; $('#card').classList.remove('show'); $('#reset').classList.remove('pulse'); if(!everHeld) $('#hint').style.display=''; }
+
+// ---- UI: всё картинками, без текста ----
+function buildCats(){ $('#cats').innerHTML=''; for(const k of Object.keys(CATS)){ const b=document.createElement('button'); b.className='tile cat'+(k===curCat?' on':''); b.setAttribute('aria-label',CATS[k]);
+  b.innerHTML=`<img src="img/cats/${k}.webp" alt="">`; b.onclick=()=>{ if(k===curCat) return; Snd.pop(); curCat=k; buildCats(); buildDrinks(); setDrink(DRINKS.find(x=>x.cat===k)); }; $('#cats').append(b);} }
+function buildDrinks(){ $('#drinks').innerHTML=''; for(const d of DRINKS.filter(x=>x.cat===curCat)){ const b=document.createElement('button'); b.className='tile'+(d.id===drink.id?' on':''); b.dataset.id=d.id; b.setAttribute('aria-label',d.name);
+  b.style.setProperty('--ring', d.bottom); b.innerHTML=`<img src="img/recipes/${d.id}.webp" alt="">`; b.onclick=()=>{ Snd.pop(); setDrink(d); }; $('#drinks').append(b);} }
+buildCats(); buildDrinks();
+$('#reset').onclick = reset;
+
+// ---- ввод: держим кнопку, чайник или пробел ----
+const hold = on => { if(on && !done){ everHeld = true; $('#hint').style.display='none'; } holding = on && !done; target = holding ? THETA_MAX : 0; $('#hold').classList.toggle('down', on); };
+for (const el of [$('#hold'), teapot]) {
+  el.addEventListener('pointerdown', e => { e.preventDefault(); hold(true); });
+}
+addEventListener('pointerup', () => hold(false)); addEventListener('pointercancel', () => hold(false));
+addEventListener('keydown', e => { if(e.code==='Space'){ e.preventDefault(); hold(true);} });
+addEventListener('keyup', e => { if(e.code==='Space') hold(false); });
+
+// ---- кадр ----
+const smooth = x => { x=Math.max(0,Math.min(1,x)); return x*x*(3-2*x); };
+function frame(now){
+  const dt = Math.min((now-last)/1000, .05); last = now; const t = (now-t0)/1000;
+  // наклон с «пружинкой»
+  tilt += (target - tilt) * Math.min(1, dt*7);
+  flow = smooth((tilt-POUR_START)/(THETA_MAX-POUR_START)) * (level<1 ? 1 : 0);
+  level = Math.min(1, level + flow*dt/FILL_SECONDS);
+  if(level>=1 && !done){ done=true; hold(false); $('#card').classList.add('show'); $('#reset').classList.add('pulse'); burst(); Snd.chime(); }
+  $('#barFill').style.width = (level*100)+'%';
+
+  Snd.update(flow, level); if(flow>0.3 && Math.random() < flow*dt*7) Snd.bloop(level);
+  teapot.style.transform = `rotate(${-tilt}deg)`;
+
+  // носик чайника сейчас
+  const tipLocal = rotCCW(spoutLocal, tilt);
+  const tip = { x: teapotLeft + tipLocal.x, y: teapotTop + tipLocal.y };
+  const surf = surfaceAbsY(level);
+
+  // струя: парабола от носика вниз
+  const body = $('#streamBody'), shine = $('#streamShine');
+  if(flow>0.02){
+    const endX = landX, endY = surf + 2;
+    const cx = tip.x - 26, cy = tip.y + (endY-tip.y)*0.18;
+    const d = `M ${tip.x-3} ${tip.y+2} Q ${cx} ${cy} ${endX} ${endY}`;
+    body.setAttribute('d', d); shine.setAttribute('d', d);
+    body.setAttribute('stroke-width', 16*flow); shine.setAttribute('stroke-width', 4.5*flow);
+    shine.setAttribute('stroke-dashoffset', -t*160);
+  } else { body.setAttribute('stroke-width', 0); shine.setAttribute('stroke-width', 0); }
+
+  // жидкость в стакане (канвас с маской стакана)
+  const W = liquid.width, Hh = liquid.height, k = 2;
+  lctx.globalCompositeOperation='source-over'; lctx.clearRect(0,0,W,Hh);
+  if(V.kind==='mug'){ const r=$('#rim'); r.style.opacity = smooth(level/0.25); r.style.transform = `scaleY(${1+Math.sin(t*9)*0.12*flow})`; }
+  if(V.kind==='glass' && level>0.001){
+    const sy = (innerBotPx - level*(innerBotPx-innerTopPx))*k;
+    const amp = (1.2 + flow*3.2)*k;
+    const g = lctx.createLinearGradient(0, sy, 0, innerBotPx*k);
+    g.addColorStop(0, drink.top); g.addColorStop(1, drink.bottom);
+    lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(0, Hh);
+    for(let x=0; x<=W; x+=6) lctx.lineTo(x, sy + Math.sin(x*0.03 + t*5)*amp + Math.sin(x*0.07 - t*3)*amp*.5);
+    lctx.lineTo(W, Hh); lctx.closePath(); lctx.fill();
+    // светлая кромка поверхности
+    lctx.globalAlpha = .35; lctx.fillStyle = '#fff'; lctx.fillRect(0, sy-1*k, W, 3*k); lctx.globalAlpha = 1;
+    lctx.globalCompositeOperation='destination-in';
+    if(V.maskImg.complete) lctx.drawImage(V.maskImg, 0, 0, W, Hh);
+    lctx.globalCompositeOperation='source-over';
+  }
+
+  // всплеск у места падения
+  const sp = $('#splash');
+  if(flow>0.35){
+    const w = 80 + Math.sin(t*18)*6, sc = w/META.splash.w;
+    Object.assign(sp.style, { display:'', width: w+'px', left: (landX - w/2)+'px', top: (surf - META.splash.h*sc + 6)+'px', opacity: .85*flow });
+    // брызги
+    if(Math.random() < flow*dt*40) parts.push({x:landX+(Math.random()*20-10), y:surf, vx:(Math.random()-.5)*160, vy:-(80+Math.random()*160), life:.55, r:1.5+Math.random()*2.5});
+  } else sp.style.display='none';
+  fctx.clearRect(0,0,960,640);
+  const rgb = hex2rgb(drink.top);
+  for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; p.life-=dt; if(p.life<=0 || p.y>surf+4){ parts.splice(i,1); continue; }
+    p.vy += 620*dt; p.x += p.vx*dt; p.y += p.vy*dt; fctx.fillStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${Math.min(1,p.life*3)})`; fctx.beginPath(); fctx.arc(p.x,p.y,p.r,0,6.3); fctx.fill(); }
+
+  for(let i=conf.length-1;i>=0;i--){ const p=conf[i]; p.life-=dt; if(p.life<=0){ conf.splice(i,1); continue; }
+    p.vy += 520*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .99; p.rot += dt*8; fctx.save(); fctx.translate(p.x,p.y); fctx.rotate(p.rot); fctx.fillStyle=p.c; fctx.globalAlpha=Math.min(1,p.life*2); fctx.fillRect(-p.r,-p.r/2,p.r*2,p.r); fctx.restore(); }
+  // пар: над носиком и крышкой, мягко плывёт вверх
+  for(const [id,ph,ox] of [['#steam1',0,0],['#steam2',.5,70]]){
+    const s = $(id); const u = ((t*.22)+ph)%1, w = 70;
+    Object.assign(s.style, { width:w+'px', left:(tip.x + ox - 10 + Math.sin(t*2+ph*6)*6)+'px', top:(tip.y - 80 - u*70)+'px', opacity: (Math.sin(u*Math.PI))*0.7*(done?0.4:1) });
+  }
+  requestAnimationFrame(frame);
+}
+setDrink(DRINKS[0]);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

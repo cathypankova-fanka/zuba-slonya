@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#FF6B4A" />
+  <circle cx="256" cy="264" r="164" fill="#FFFBEB" />
+  <!-- Rosy cheeks -->
+  <ellipse cx="166" cy="296" rx="28" ry="18" fill="#FF5CA8" opacity="0.45" />
+  <ellipse cx="346" cy="296" rx="28" ry="18" fill="#FF5CA8" opacity="0.45" />
+  <!-- Happy eyes -->
+  <circle cx="200" cy="242" r="22" fill="#24211D" />
+  <circle cx="207" cy="235" r="7" fill="#FFFFFF" />
+  <circle cx="312" cy="242" r="22" fill="#24211D" />
+  <circle cx="319" cy="235" r="7" fill="#FFFFFF" />
+  <!-- Joyful smile -->
+  <path d="M198 310 Q256 364 314 310" fill="none" stroke="#24211D" stroke-width="18" stroke-linecap="round" />
+  <!-- Face-paint star sticker on cheek/forehead -->
+  <path d="M324 140 L334 164 L360 166 L340 183 L346 208 L324 195 L302 208 L308 183 L288 166 L314 164 Z" fill="#FFD13B" stroke="#D97706" stroke-width="6" stroke-linejoin="round" />
+  <!-- Crown/hat accent -->
+  <circle cx="144" cy="144" r="22" fill="#38BDF8" stroke="#FFFFFF" stroke-width="8" />
+  <circle cx="192" cy="112" r="18" fill="#10C97A" stroke="#FFFFFF" stroke-width="7" />
+</svg>

@@ -1,0 +1,101 @@
+[
+ {
+  "id": "zuba_zubki",
+  "title": "Зуба и Зубки",
+  "src": "/assets/tv/zuba_zubki.mp4",
+  "poster": "/assets/tv/zuba_zubki_poster.webp",
+  "portrait": true,
+  "seconds": 145,
+  "mb": 4.5
+ },
+ {
+  "id": "zuba_slonya",
+  "title": "Зуба и Слоня",
+  "src": "/assets/tv/zuba_slonya.mp4",
+  "poster": "/assets/tv/zuba_slonya_poster.webp",
+  "portrait": false,
+  "seconds": 359,
+  "mb": 13.5
+ },
+ {
+  "id": "dr_slonya",
+  "title": "День рождения Слони",
+  "src": "/assets/tv/dr_slonya.mp4",
+  "poster": "/assets/tv/dr_slonya_poster.webp",
+  "portrait": false,
+  "seconds": 347,
+  "mb": 9.9
+ },
+ {
+  "id": "hyena_afraid",
+  "title": "Почему гиена боится",
+  "src": "/assets/tv/hyena_afraid.mp4",
+  "poster": "/assets/tv/hyena_afraid_poster.webp",
+  "portrait": false,
+  "seconds": 309,
+  "mb": 10.6
+ },
+ {
+  "id": "pol_lava",
+  "title": "Пол — это лава",
+  "src": "/assets/tv/pol_lava.mp4",
+  "poster": "/assets/tv/pol_lava_poster.webp",
+  "portrait": false,
+  "seconds": 221,
+  "mb": 8.1
+ },
+ {
+  "id": "who_to_be",
+  "title": "Кем ты хочешь быть",
+  "src": "/assets/tv/who_to_be.mp4",
+  "poster": "/assets/tv/who_to_be_poster.webp",
+  "portrait": false,
+  "seconds": 99,
+  "mb": 5.4
+ },
+ {
+  "id": "name1",
+  "title": "Как тебя зовут",
+  "src": "/assets/tv/name1.mp4",
+  "poster": "/assets/tv/name1_poster.webp",
+  "portrait": false,
+  "seconds": 98,
+  "mb": 5.6
+ },
+ {
+  "id": "name2",
+  "title": "Как тебя зовут 2",
+  "src": "/assets/tv/name2.mp4",
+  "poster": "/assets/tv/name2_poster.webp",
+  "portrait": false,
+  "seconds": 91,
+  "mb": 4.7
+ },
+ {
+  "id": "age",
+  "title": "Сколько лет",
+  "src": "/assets/tv/age.mp4",
+  "poster": "/assets/tv/age_poster.webp",
+  "portrait": false,
+  "seconds": 87,
+  "mb": 6.0
+ },
+ {
+  "id": "tickle",
+  "title": "Щекотун",
+  "src": "/assets/tv/tickle.mp4",
+  "poster": "/assets/tv/tickle_poster.webp",
+  "portrait": false,
+  "seconds": 130,
+  "mb": 6.8
+ },
+ {
+  "id": "first",
+  "title": "Я первый",
+  "src": "/assets/tv/first.mp4",
+  "poster": "/assets/tv/first_poster.webp",
+  "portrait": false,
+  "seconds": 354,
+  "mb": 9.1
+ }
+]

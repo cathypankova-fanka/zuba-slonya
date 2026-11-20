@@ -1,0 +1,16 @@
+{
+ "cup": {
+  "w": 1111,
+  "h": 808,
+  "innerTop": 34,
+  "innerBottom": 671,
+  "cx": 453.2
+ },
+ "cupmug": {
+  "w": 1107,
+  "h": 1165,
+  "innerTop": 35,
+  "innerBottom": 981,
+  "cx": 474.6
+ }
+}

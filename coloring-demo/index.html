@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Раскраска — прототип</title>
+<style>
+  :root { --ink:#334155; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; height:100%; background: linear-gradient(180deg,#fdf2f8,#e0f2fe 70%); font-family: Nunito, Rubik, system-ui, sans-serif; color:var(--ink); overflow:hidden; touch-action:none; user-select:none; }
+  button { font:inherit; border:0; padding:0; cursor:pointer; background:none; touch-action:manipulation; }
+  #gallery { position:fixed; inset:0; overflow:auto; padding:18px 12px 30px; display:none; touch-action:pan-y; z-index:20; background:linear-gradient(180deg,#fdf2f8,#e0f2fe); }
+  #gallery.show { display:block; }
+  #grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap:12px; max-width:900px; margin:0 auto; }
+  .thumb { position:relative; aspect-ratio:1; width:100%; min-height:0; overflow:hidden; border-radius:22px; background:#fff; box-shadow:0 5px 0 rgba(0,0,0,.1); padding:10px; transition:transform .15s; }
+  .thumb:active { transform: scale(.94); }
+  .thumb img { width:100%; height:100%; object-fit:contain; pointer-events:none; display:block; }
+  .thumb.done::after { content:'⭐'; position:absolute; right:8px; top:6px; font-size:24px; }
+  #wrap { position:fixed; inset:0 0 var(--tray,205px) 0; overflow:hidden; }
+  #stage { position:absolute; left:50%; top:50%; width:960px; height:640px; margin:-320px 0 0 -480px; transform-origin:center; }
+  canvas#c { position:absolute; left:0; top:0; width:960px; height:640px; touch-action:none; }
+  #hint { position:absolute; left:520px; top:260px; font-size:80px; line-height:1; pointer-events:none; animation: bob .9s ease-in-out infinite; filter: drop-shadow(0 4px 4px rgba(0,0,0,.2)); }
+  @keyframes bob { 0%,100% { transform: translateY(0) rotate(-12deg); } 50% { transform: translateY(18px) rotate(-12deg); } }
+  #tray { position:fixed; left:0; right:0; bottom:0; padding:8px 8px 10px; display:flex; flex-direction:column; gap:8px; align-items:center; background:rgba(255,255,255,.6); backdrop-filter: blur(6px); border-radius:26px 26px 0 0; box-shadow:0 -4px 18px rgba(0,0,0,.08); z-index:5; }
+  .row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; align-items:center; }
+  .sw { width:44px; height:44px; border-radius:50%; box-shadow:0 3px 0 rgba(0,0,0,.18), 0 0 0 3px #fff inset; transition: transform .15s; }
+  .sw.on { transform: translateY(-5px) scale(1.2); box-shadow:0 5px 0 rgba(124,58,237,.4), 0 0 0 3px #fff inset, 0 0 0 6px #7c3aed; }
+  .tool { width:60px; height:60px; border-radius:20px; background:#fff; box-shadow:0 4px 0 rgba(0,0,0,.12); display:grid; place-items:center; color:#475569; }
+  .tool svg { width:34px; height:34px; }
+  .tool.on { background:#7c3aed; color:#fff; box-shadow:0 6px 0 rgba(76,29,149,.5); transform: translateY(-3px); }
+  .size { width:46px; height:46px; border-radius:16px; background:#fff; box-shadow:0 3px 0 rgba(0,0,0,.12); display:grid; place-items:center; }
+  .size i { display:block; border-radius:50%; background:#475569; }
+  .size.on { box-shadow:0 0 0 4px #7c3aed inset, 0 4px 0 rgba(0,0,0,.12); }
+  .fab { position:fixed; z-index:6; border-radius:50%; display:grid; place-items:center; color:#fff; }
+  .fab svg { width:52%; height:52%; }
+  #done { right:12px; bottom:calc(var(--tray,205px) + 10px); width:84px; height:84px; background:#22c55e; box-shadow:0 6px 0 #15803d; }
+  #done.pulse { animation: pulse 1s ease-in-out infinite; }
+  #undo { left:12px; bottom:calc(var(--tray,205px) + 10px); width:60px; height:60px; background:#f59e0b; box-shadow:0 5px 0 #b45309; }
+  #clear { left:12px; bottom:calc(var(--tray,205px) + 82px); width:52px; height:52px; background:#ef4444; box-shadow:0 4px 0 #b91c1c; }
+  #back { left:12px; top:12px; width:52px; height:52px; background:#fff; color:#475569; box-shadow:0 4px 0 rgba(0,0,0,.14); }
+  #mute { right:12px; top:12px; width:48px; height:48px; background:#fff; color:#475569; box-shadow:0 4px 0 rgba(0,0,0,.14); }
+  #mute .off { display:none; } #mute.muted .on { display:none; } #mute.muted .off { display:inline; }
+  @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12); } }
+</style>
+</head>
+<body>
+<div id="gallery"><div id="grid"></div></div>
+
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c" width="1920" height="1280"></canvas>
+    <div id="hint">👆</div>
+  </div>
+</div>
+
+<div id="tray">
+  <div class="row" id="colors"></div>
+  <div class="row" id="tools"></div>
+</div>
+<button id="done" class="fab" aria-label="Готово">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>
+</button>
+<button id="undo" class="fab" aria-label="Назад">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7L4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12"/></svg>
+</button>
+<button id="clear" class="fab" aria-label="Стереть всё">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>
+</button>
+<button id="back" class="fab" aria-label="Выбрать другую">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>
+</button>
+<button id="mute" class="fab" aria-label="Звук">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><g class="on"><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18 6.5a7.6 7.6 0 0 1 0 11"/></g><g class="off"><path d="M16 9.5l5 5M21 9.5l-5 5"/></g></svg>
+</button>
+
+<script>
+const $ = s => document.querySelector(s);
+const PAGES = ['bear','bunny','kitten','puppy','fox','lion','frog','owl','panda','koala','elephant','giraffe','zebra','monkey','hedgehog','flamingo','chick','duckling','penguin','turtle','octopus','whale','fish','crab','starfish','seahorse','jellyfish','snail','caterpillar','ladybug','bee','dino','dragon','unicorn','butterfly_a','butterfly_b'];
+const COLORS = ['#ef4444','#f97316','#facc15','#84cc16','#22c55e','#14b8a6','#3b82f6','#6366f1','#a855f7','#ec4899','#92400e','#fcd9b6','#9ca3af','#ffffff'];
+const W = 960, H = 640;
+
+// ================= звук =================
+const Snd = (() => {
+  let ac, master, muted = false;
+  try { muted = localStorage.getItem('colorMuted') === '1'; } catch(e) {}
+  const init = () => { if(ac) return; const A = window.AudioContext || window.webkitAudioContext; if(!A) return; ac = new A(); master = ac.createGain(); master.gain.value = muted ? 0 : .7; master.connect(ac.destination); };
+  const ok = () => ac && ac.state !== 'closed';
+  const tone = (f, t0, dur, type, vol, f2) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t0); if(f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur*.8);
+    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .015); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur); o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + .05); };
+  return {
+    resume(){ init(); if(ok() && ac.state === 'suspended') ac.resume(); },
+    pop(){ if(ok()) tone(520, ac.currentTime, .09, 'sine', .2, 880); },
+    fill(i){ if(ok()){ const t = ac.currentTime, f = 330 * Math.pow(2, ((i||0) % 5) / 5 * 1.0); tone(f, t, .25, 'triangle', .22, f*1.5); tone(f*2, t + .05, .2, 'sine', .1); } },
+    paint(){ if(ok()) tone(500 + Math.random()*300, ac.currentTime, .06, 'sine', .05); },
+    ding(){ if(ok()){ const t = ac.currentTime; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, t + i*.11, .5, 'triangle', .2)); } },
+    setMuted(m){ muted = m; try { localStorage.setItem('colorMuted', m ? '1' : '0'); } catch(e) {} if(ok()) master.gain.setTargetAtTime(m ? 0 : .7, ac.currentTime, .03); },
+    get muted(){ return muted; },
+  };
+})();
+addEventListener('pointerdown', () => Snd.resume(), true);
+$('#mute').classList.toggle('muted', Snd.muted);
+$('#mute').onclick = () => { Snd.resume(); Snd.setMuted(!Snd.muted); $('#mute').classList.toggle('muted', Snd.muted); };
+
+// ================= состояние =================
+const cv = $('#c'), ctx = cv.getContext('2d'); ctx.scale(2, 2);
+const stage = $('#stage');
+let tool = 'fill', color = COLORS[0], colorIdx = 0, size = 2, hue = 0;
+let page = null;     // {id, w, h, line:Image, lab:Int32Array, paint:canvas, pctx, rect:{x,y,s}, regions:n}
+let everActed = false, doneSet = new Set(); try { JSON.parse(localStorage.getItem('colorDone') || '[]').forEach(x => doneSet.add(x)); } catch(e) {}
+const undoStack = [], anims = [], conf = [];
+
+function fit(){ const tray = $('#tray').offsetHeight; document.documentElement.style.setProperty('--tray', tray + 'px');
+  const k = Math.min(innerWidth/W, (innerHeight - tray)/H) * 0.98; stage.style.transform = `scale(${Math.max(k, .3)})`; }
+addEventListener('resize', fit);
+
+// ================= галерея =================
+function buildGallery(){
+  const g = $('#grid'); g.innerHTML = '';
+  for(const id of PAGES){ const b = document.createElement('button'); b.className = 'thumb' + (doneSet.has(id) ? ' done' : ''); b.setAttribute('aria-label', id);
+    b.innerHTML = `<img src="img/pages/${id}.webp" alt="">`; b.onclick = () => { Snd.pop(); openPage(id); }; g.append(b); }
+}
+$('#back').onclick = () => { Snd.pop(); buildGallery(); $('#gallery').classList.add('show'); };
+
+// ================= открыть страницу и построить карту областей =================
+function openPage(id){
+  const img = new Image(); img.onload = () => {
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const oc = document.createElement('canvas'); oc.width = w; oc.height = h; const o = oc.getContext('2d', { willReadFrequently: true }); o.drawImage(img, 0, 0);
+    const d = o.getImageData(0, 0, w, h).data, lab = new Int32Array(w * h);   // 0 = линия
+    const isLine = i => d[i*4 + 3] > 110;
+    let n = 0; const stack = new Int32Array(w * h);
+    for(let s = 0; s < w * h; s++){
+      if(lab[s] || isLine(s)) continue; n++; let sp = 0; stack[sp++] = s; lab[s] = n;
+      while(sp){ const p = stack[--sp], x = p % w, y = (p / w) | 0;
+        if(x > 0   && !lab[p-1] && !isLine(p-1)){ lab[p-1] = n; stack[sp++] = p-1; }
+        if(x < w-1 && !lab[p+1] && !isLine(p+1)){ lab[p+1] = n; stack[sp++] = p+1; }
+        if(y > 0   && !lab[p-w] && !isLine(p-w)){ lab[p-w] = n; stack[sp++] = p-w; }
+        if(y < h-1 && !lab[p+w] && !isLine(p+w)){ lab[p+w] = n; stack[sp++] = p+w; } } }
+    // области чуть «заходят под линию», чтобы не оставалось белой каймы
+    for(let pass = 0; pass < 3; pass++){ const nl = lab.slice();
+      for(let y = 1; y < h-1; y++) for(let x = 1; x < w-1; x++){ const p = y*w + x; if(lab[p]) continue;
+        const v = lab[p-1] || lab[p+1] || lab[p-w] || lab[p+w]; if(v) nl[p] = v; }
+      lab.set(nl); }
+    const paint = document.createElement('canvas'); paint.width = w; paint.height = h;
+    const s = Math.min(780 / w, 590 / h); page = { id, w, h, line: img, lab, regions: n, paint, pctx: paint.getContext('2d'), rect: { x: W/2 - w*s/2, y: 330 - h*s/2, s } };
+    undoStack.length = 0; anims.length = 0; everActed = false; $('#hint').style.display = ''; $('#done').classList.remove('pulse');
+    $('#gallery').classList.remove('show'); fit();
+  }; img.src = `img/pages/${id}.webp`;
+}
+
+// ================= инструменты =================
+function regionMask(L, col){       // холст страницы: пиксели области L залиты цветом
+  const c = document.createElement('canvas'); c.width = page.w; c.height = page.h; const x = c.getContext('2d');
+  const im = x.createImageData(page.w, page.h), d = im.data, lab = page.lab;
+  const rgb = hexToRgb(col);
+  for(let i = 0; i < lab.length; i++) if(lab[i] === L){ d[i*4] = rgb[0]; d[i*4+1] = rgb[1]; d[i*4+2] = rgb[2]; d[i*4+3] = 255; }
+  x.putImageData(im, 0, 0); return c;
+}
+const hexToRgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+function pushUndo(){ undoStack.push(page.pctx.getImageData(0, 0, page.w, page.h)); if(undoStack.length > 12) undoStack.shift(); }
+function toPage(e){ const r = cv.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+  return { x: (x - page.rect.x) / page.rect.s, y: (y - page.rect.y) / page.rect.s }; }
+const labAt = (px, py) => { const x = Math.round(px), y = Math.round(py); return (x < 0 || y < 0 || x >= page.w || y >= page.h) ? -1 : page.lab[y * page.w + x]; };
+const BRUSH = [14, 30, 60];
+let stroke = null;
+
+cv.addEventListener('pointerdown', e => {
+  if(!page) return; e.preventDefault(); cv.setPointerCapture(e.pointerId); everActed = true; $('#hint').style.display = 'none';
+  const p = toPage(e); let L = labAt(p.x, p.y);
+  if(L <= 0){ // попали ровно в линию — берём ближайшую область рядом
+    for(let r = 2; r <= 14 && L <= 0; r += 3) for(const [dx, dy] of [[r,0],[-r,0],[0,r],[0,-r],[r,r],[-r,-r],[r,-r],[-r,r]]){ const v = labAt(p.x + dx, p.y + dy); if(v > 0){ L = v; break; } } }
+  if(L <= 0) return;
+  if(tool === 'fill' || tool === 'erase'){
+    pushUndo(); const t = tool === 'erase' ? null : color;
+    if(t === null){ const m = regionMask(L, '#000000'); page.pctx.globalCompositeOperation = 'destination-out'; page.pctx.drawImage(m, 0, 0); page.pctx.globalCompositeOperation = 'source-over'; Snd.pop(); }
+    else { anims.push({ mask: regionMask(L, t), cx: p.x, cy: p.y, t0: performance.now() }); Snd.fill(colorIdx); }
+    return; }
+  // кисть: красим только внутри той области, где начали (за линию выйти нельзя)
+  pushUndo(); stroke = { L, mask: regionMask(L, '#000000'), lx: p.x, ly: p.y, dist: 0 };
+  brushDab(p.x, p.y);
+});
+function brushDab(x, y, x2, y2){
+  const m = stroke.mask; const tmp = brushDab.tmp || (brushDab.tmp = document.createElement('canvas'));
+  if(tmp.width !== page.w || tmp.height !== page.h){ tmp.width = page.w; tmp.height = page.h; }
+  const t = tmp.getContext('2d'); t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, page.w, page.h);
+  t.lineCap = 'round'; t.lineJoin = 'round'; t.strokeStyle = tool === 'magic' ? `hsl(${hue % 360},90%,58%)` : color; t.fillStyle = t.strokeStyle; t.lineWidth = BRUSH[size] * (page.w / 780) * .9;
+  t.beginPath(); t.moveTo(x, y); t.lineTo(x2 ?? x, y2 ?? y); t.stroke();
+  t.globalCompositeOperation = 'destination-in'; t.drawImage(m, 0, 0);               // обрезаем по области
+  page.pctx.drawImage(tmp, 0, 0);
+}
+cv.addEventListener('pointermove', e => {
+  if(!stroke || !page) return; const p = toPage(e);
+  if(labAt(p.x, p.y) !== stroke.L && Math.hypot(p.x - stroke.lx, p.y - stroke.ly) < 1) return;
+  const d = Math.hypot(p.x - stroke.lx, p.y - stroke.ly); stroke.dist += d; if(tool === 'magic') hue += d * .9;
+  brushDab(stroke.lx, stroke.ly, p.x, p.y); stroke.lx = p.x; stroke.ly = p.y;
+  if(Math.random() < .12) Snd.paint();
+});
+const endStroke = () => { stroke = null; };
+cv.addEventListener('pointerup', endStroke); cv.addEventListener('pointercancel', endStroke);
+
+$('#undo').onclick = () => { Snd.resume(); if(page && undoStack.length){ page.pctx.putImageData(undoStack.pop(), 0, 0); Snd.pop(); } };
+$('#clear').onclick = () => { Snd.resume(); if(page){ pushUndo(); page.pctx.clearRect(0, 0, page.w, page.h); Snd.pop(); } };
+$('#done').onclick = () => { Snd.resume(); if(!page) return; doneSet.add(page.id); try { localStorage.setItem('colorDone', JSON.stringify([...doneSet])); } catch(e) {}
+  Snd.ding(); for(let i = 0; i < 80; i++) conf.push({ x: W/2 + (Math.random()-.5)*300, y: 300, vx: (Math.random()-.5)*700, vy: -(250+Math.random()*450), life: 2+Math.random()*.8, c: COLORS[i % COLORS.length], r: 3+Math.random()*5, rot: Math.random()*6 });
+  setTimeout(() => { buildGallery(); $('#gallery').classList.add('show'); }, 1800); };
+
+// ================= панель инструментов (картинки) =================
+const ICONS = {
+  fill: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l6-8 8 8-6 8z"/><path d="M5 12h14" /><path d="M20 15c1.4 1.8 2 3 2 4a2 2 0 0 1-4 0c0-1 .6-2.2 2-4z" fill="currentColor"/></svg>',
+  brush: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4l-9 9"/><path d="M11 13c-2.5-.6-4.6 1-4.6 3.4 0 1.8-1.4 2.6-2.4 3 3.6 1.6 8.4 1 8.4-3.4 0-1.2-.6-2.4-1.4-3z" fill="currentColor"/></svg>',
+  magic: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round"><path d="M3 15a9 9 0 0 1 18 0" stroke="#ef4444"/><path d="M6 15a6 6 0 0 1 12 0" stroke="#facc15"/><path d="M9 15a3 3 0 0 1 6 0" stroke="#3b82f6"/><path d="M12 3v2M20 6l-1.4 1.4M4 6l1.4 1.4" stroke="#a855f7"/></svg>',
+  erase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l9-10a2 2 0 0 1 3 0l3 3a2 2 0 0 1 0 3l-6 6H8z" fill="currentColor" fill-opacity=".25"/><path d="M8 19h12"/></svg>',
+};
+function buildTray(){
+  const cr = $('#colors'); cr.innerHTML = ''; COLORS.forEach((c, i) => { const b = document.createElement('button'); b.className = 'sw' + (i === colorIdx ? ' on' : ''); b.style.background = c; b.setAttribute('aria-label', c);
+    b.onclick = () => { Snd.pop(); color = c; colorIdx = i; if(tool === 'erase' || tool === 'magic') tool = 'fill'; buildTray(); }; cr.append(b); });
+  const tr = $('#tools'); tr.innerHTML = '';
+  for(const k of ['fill', 'brush', 'magic', 'erase']){ const b = document.createElement('button'); b.className = 'tool' + (tool === k ? ' on' : ''); b.innerHTML = ICONS[k]; b.setAttribute('aria-label', k); b.onclick = () => { Snd.pop(); tool = k; buildTray(); }; tr.append(b); }
+  if(tool === 'brush' || tool === 'magic'){ [10, 18, 28].forEach((d, i) => { const b = document.createElement('button'); b.className = 'size' + (size === i ? ' on' : ''); b.innerHTML = `<i style="width:${d}px;height:${d}px"></i>`; b.onclick = () => { Snd.pop(); size = i; buildTray(); }; tr.append(b); }); }
+  fit();
+}
+
+// ================= рисование кадра =================
+const ease = t => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3);
+let last = performance.now();
+function frame(now){
+  const dt = Math.min((now - last) / 1000, .05); last = now;
+  ctx.clearRect(0, 0, W, H);
+  if(page){
+    const { x, y, s } = page.rect, w = page.w * s, h = page.h * s;
+    ctx.fillStyle = '#ffffff'; ctx.shadowColor = 'rgba(0,0,0,.12)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 8; ctx.beginPath(); ctx.roundRect(x - 14, y - 14, w + 28, h + 28, 30); ctx.fill(); ctx.shadowColor = 'transparent';
+    ctx.drawImage(page.paint, x, y, w, h);
+    // растущая заливка (круг расходится от места касания, но только внутри области)
+    for(let i = anims.length - 1; i >= 0; i--){ const a = anims[i], k = ease((now - a.t0) / 380), maxR = Math.hypot(page.w, page.h);
+      ctx.save(); ctx.beginPath(); ctx.arc(x + a.cx * s, y + a.cy * s, maxR * s * k, 0, 7); ctx.clip(); ctx.drawImage(a.mask, x, y, w, h); ctx.restore();
+      if(k >= 1){ page.pctx.drawImage(a.mask, 0, 0); anims.splice(i, 1); } }
+    ctx.drawImage(page.line, x, y, w, h);
+  }
+  for(let i = conf.length - 1; i >= 0; i--){ const p = conf[i]; p.life -= dt; if(p.life <= 0){ conf.splice(i, 1); continue; }
+    p.vy += 560 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .99; p.rot += dt * 8; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c; ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillRect(-p.r, -p.r/2, p.r*2, p.r); ctx.restore(); }
+  $('#done').classList.toggle('pulse', !!page && undoStack.length >= 3);
+  requestAnimationFrame(frame);
+}
+
+// ================= старт =================
+buildTray(); buildGallery(); $('#gallery').classList.add('show'); fit(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
