@@ -69,7 +69,7 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
   }, [soundEnabled]);
 
   useEffect(() => {
-    const m: Partial<Record<StepId, string>> = { pick: 'dr_pick', glass: 'dr_glass', pour: 'dr_pour', ice: 'dr_ice', top: 'dr_top' };
+    const m: Partial<Record<StepId, string>> = { pick: 'dr_pick', glass: 'dr_glass', pour: 'dr_pour', ice: 'dr_ice', stir: 'dr_stir', top: 'dr_top' };
     const v = m[step];
     if (v) say(v, soundEnabled);
     if (step === 'serve') { setServedKey((k) => k + 1); window.setTimeout(() => say('dr_ok', soundEnabled), 300); }
@@ -127,6 +127,7 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
     if (t !== stirTurns) {
       setStirTurns(t);
       soundEngine.playGamePop(soundEnabled, 3 + t);
+      if (t === 1) say('dr_stir_more', soundEnabled);
       if (t >= STIR_TURNS) { stir.current = null; window.setTimeout(() => next(), 400); }
     }
   };
