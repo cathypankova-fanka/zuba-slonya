@@ -11,6 +11,16 @@ interface DrinksPourCanvasProps {
   onSetPourLevel: (level: number) => void;
   onStirDrink: () => void;
   onStartDishDrag?: (e: React.PointerEvent<HTMLElement>) => void;
+  /** Режим миссии: без своих кнопок/подсказок/стола; наливать — держать палец в любом месте сцены */
+  minimal?: boolean;
+  /** можно ли сейчас наливать (в миссии — после выбора бутылочки) */
+  canPour?: boolean;
+  /** стакан налит доверху */
+  onFull?: () => void;
+  hideTeapot?: boolean;
+  /** приближение (1 = вся сцена); с focusVessel — центрируем на чашке */
+  zoom?: number;
+  focusVessel?: boolean;
 }
 
 type VesselKind = 'cup' | 'cupmug' | 'glass';
@@ -176,6 +186,12 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
   onSetPourLevel,
   onStirDrink,
   onStartDishDrag,
+  minimal = false,
+  canPour = true,
+  onFull,
+  hideTeapot = false,
+  zoom = 1,
+  focusVessel = false,
 }) => {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [stageScale, setStageScale] = useState(0.6);
@@ -237,6 +253,8 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
     isHotDrink,
     soundEnabled,
     onSetPourLevel,
+    onFull,
+    canPour,
   });
   latestPropsRef.current = {
     drink,
@@ -252,6 +270,8 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
     isHotDrink,
     soundEnabled,
     onSetPourLevel,
+    onFull,
+    canPour,
   };
 
   const simRef = useRef({
@@ -315,6 +335,7 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
 
   const setHold = (on: boolean) => {
     const sim = simRef.current;
+    if (on && !latestPropsRef.current.canPour) return;
     if (on && !sim.done) {
       sim.everHeld = true;
       setShowHint(false);
@@ -423,6 +444,7 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
         setIsHoldingUi(false);
         setIsFullDone(true);
         props.onSetPourLevel(1);
+        props.onFull?.();
         for (let i = 0; i < 42; i++) {
           sim.conf.push({
             x: props.landX + (Math.random() * 40 - 20),
@@ -744,9 +766,9 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
   return (
     <div
       ref={wrapperRef}
-      onPointerDown={onStartDishDrag}
+      onPointerDown={minimal ? (e) => { e.preventDefault(); setHold(true); } : onStartDishDrag}
       onClick={() => {
-        if (drink.pourLevel > 0.08) onStirDrink();
+        if (!minimal && drink.pourLevel > 0.08) onStirDrink();
       }}
       style={{ touchAction: drink.pourLevel > 0.08 ? 'none' : 'manipulation' }}
       className={`relative w-full h-full flex items-center justify-center overflow-hidden select-none transition-opacity duration-150 ${
@@ -754,7 +776,7 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
       }`}
     >
       {/* Top liquid level bar */}
-      <div
+      <div hidden={minimal}
         className="absolute top-2 left-1/2 -translate-x-1/2 z-10 w-[190px] sm:w-[230px] h-4 rounded-full bg-white/80 overflow-hidden pointer-events-none"
         style={{ boxShadow: '0 0 0 3px #fff inset, 0 3px 0 rgba(0,0,0,0.08)' }}
       >
@@ -773,7 +795,7 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
         style={{
           width: `${STAGE_W}px`,
           height: `${STAGE_H}px`,
-          transform: `scale(${stageScale})`,
+          transform: !minimal ? `scale(${stageScale})` : `translate(${(focusVessel ? STAGE_W / 2 - centerX : STAGE_W / 2 - (TEAPOT_LEFT + vesselLeft + TW) / 2) * stageScale * zoom}px, ${(focusVessel ? STAGE_H / 2 - (vesselTop + V.h / 2) : STAGE_H / 2 - (teapotTop + GROUND) / 2) * stageScale * zoom}px) scale(${stageScale * zoom})`,
           transformOrigin: 'center center',
         }}
         className="relative shrink-0"
@@ -781,6 +803,7 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
         {/* Warm wooden/golden table */}
         <div
           style={{
+            display: minimal ? 'none' : undefined,
             position: 'absolute',
             left: 0,
             right: 0,
@@ -1153,6 +1176,7 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
           src="/assets/pour/teapot.webp"
           alt="Чайник"
           draggable={false}
+          hidden={hideTeapot}
           onPointerDown={(e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -1195,7 +1219,7 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
         />
 
         {/* Bouncing finger hint before first pour */}
-        {showHint && !isCrumbsPhase && (
+        {showHint && !isCrumbsPhase && !minimal && (
           <div
             style={{
               position: 'absolute',
@@ -1214,7 +1238,7 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
       </div>
 
       {/* Round orange Repeat / Empty button (bottom-left) */}
-      <button
+      {!minimal && <><button
         type="button"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={handleResetPour}
@@ -1253,7 +1277,7 @@ export const DrinksPourCanvas: React.FC<DrinksPourCanvasProps> = ({
         <svg viewBox="0 0 24 24" className="w-7 h-7 sm:w-8 sm:h-8" fill="currentColor">
           <path d="M12 2.5c3.2 4.2 6 7.4 6 11a6 6 0 0 1-12 0c0-3.6 2.8-6.8 6-11z" />
         </svg>
-      </button>
+      </button></>}
     </div>
   );
 };

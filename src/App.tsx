@@ -23,6 +23,7 @@ import { PizzaMission } from './components/PizzaMission';
 import { IceCreamMission } from './components/IceCreamMission';
 import { SoupMission } from './components/SoupMission';
 import { SandwichMission } from './components/SandwichMission';
+import { DrinksMission } from './components/DrinksMission';
 import { CakeMission } from './components/CakeMission';
 import { playVoice, setVoiceEnabled } from './utils/voice';
 import { SimonGame } from './components/SimonGame';
@@ -1732,6 +1733,8 @@ export default function App() {
               <SandwichMission character={activeCharacter} soundEnabled={soundEnabled} />
             ) : gameMode === 'cake' ? (
               <CakeMission character={activeCharacter} soundEnabled={soundEnabled} />
+            ) : gameMode === 'drinks' ? (
+              <DrinksMission character={activeCharacter} soundEnabled={soundEnabled} />
             ) : (
               <KitchenStage
                 mode={gameMode as KitchenMode}
@@ -1781,7 +1784,7 @@ export default function App() {
           </div>
 
           {/* Кнопки-иконки: вернуть, очистить, готово (без текста) */}
-          <div className={`flex items-center justify-center gap-4 sm:gap-6 shrink-0 ${gameMode === 'pizza' || gameMode === 'icecream' || gameMode === 'soup' || gameMode === 'sandwich' || gameMode === 'cake' ? 'hidden' : ''}`}>
+          <div className={`flex items-center justify-center gap-4 sm:gap-6 shrink-0 ${gameMode === 'pizza' || gameMode === 'icecream' || gameMode === 'soup' || gameMode === 'sandwich' || gameMode === 'cake' || gameMode === 'drinks' ? 'hidden' : ''}`}>
             <button
               type="button"
               onClick={handleUndo}
@@ -1844,7 +1847,7 @@ export default function App() {
             onTransformSelectedSticker={handleTransformSelectedTShirtSticker}
             onClearAll={handleClear}
           />
-        ) : gameMode === 'pizza' || gameMode === 'icecream' || gameMode === 'soup' || gameMode === 'sandwich' || gameMode === 'cake' ? null : (
+        ) : gameMode === 'pizza' || gameMode === 'icecream' || gameMode === 'soup' || gameMode === 'sandwich' || gameMode === 'cake' || gameMode === 'drinks' ? null : (
           <ModeToolbar
             mode={gameMode}
             washTool={washTool}

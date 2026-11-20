@@ -10,7 +10,7 @@ import { useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
 import { createPortal } from 'react-dom';
 import { ICE_CREAM_SYRUPS } from '../data/kitchenData';
-import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
+import { bottleSrc, CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
 
 interface Recipe { id: string; base: IceCreamBaseId; flavors: string[]; syrup: string; syrupColor: string; garnish: IceCreamGarnishId[] }
 const RECIPES: Recipe[] = [
@@ -24,14 +24,6 @@ const STEPS = ['pick', 'freezer', 'base', 'scoops', 'syrup', 'garnish', 'serve']
 type StepId = (typeof STEPS)[number];
 const say = (id: string, on: boolean) => playVoice(id, on);
 
-/** Бутылочка сиропа нужного цвета (рисуем сами — цвет точно как у сиропа). */
-const bottleCache: Record<string, string> = {};
-export const bottleSrc = (c: string) => (bottleCache[c] ??= 'data:image/svg+xml,' + encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 160'><path d='M45 3h10l5 23H40z' fill='#fff' stroke='#cfcfcf' stroke-width='2'/>` +
-  `<rect x='30' y='24' width='40' height='18' rx='6' fill='#fff' stroke='#cfcfcf' stroke-width='2'/>` +
-  `<path d='M20 48q0-8 8-8h44q8 0 8 8v96q0 13-13 13H33q-13 0-13-13z' fill='${c}' stroke='rgba(0,0,0,.18)' stroke-width='2'/>` +
-  `<rect x='28' y='54' width='9' height='84' rx='4.5' fill='#fff' opacity='.4'/>` +
-  `<circle cx='57' cy='100' r='17' fill='#fff' opacity='.92'/><path d='M57 88c6 8 9 12 9 16a9 9 0 0 1-18 0c0-4 3-8 9-16z' fill='${c}'/></svg>`));
 const SYRUPS = ICE_CREAM_SYRUPS.filter((x) => x.id !== 'none');
 type Pt = { x: number; y: number };
 const scoopCircle = (i: number) => ({ cy: 242 - i * 50, r: 62 - i * 3 });
