@@ -5,9 +5,25 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import {VitePWA} from 'vite-plugin-pwa';
 
+// Для GitHub Pages игра лежит в подпапке: VITE_BASE=/zuba-slonya/ (в dev остаётся '/')
+const BASE = process.env.VITE_BASE ?? '/';
+
 export default defineConfig(() => {
   return {
+    base: BASE,
     plugins: [
+      {
+        // Пути вида "/assets/..." в коде и JSON переписываем под base при сборке
+        name: 'base-aware-asset-paths',
+        enforce: 'pre' as const,
+        apply: 'build' as const,
+        transform(code: string, id: string) {
+          if (BASE === '/') return null;
+          if (!/[\\/]src[\\/].*\.(tsx?|json)$/.test(id)) return null;
+          if (!code.includes('/assets/')) return null;
+          return { code: code.replace(/(["'`])\/assets\//g, `$1${BASE}assets/`), map: null };
+        },
+      },
       react(),
       tailwindcss(),
       VitePWA({
@@ -21,7 +37,7 @@ export default defineConfig(() => {
           'pwa-maskable-512x512.png',
         ],
         manifest: {
-          id: '/',
+          id: BASE,
           name: 'Анюткина игра',
           short_name: 'Анюткина игра',
           description:
@@ -29,23 +45,23 @@ export default defineConfig(() => {
           theme_color: '#FAF8F4',
           background_color: '#FAF8F4',
           display: 'standalone',
-          start_url: '/',
-          scope: '/',
+          start_url: BASE,
+          scope: BASE,
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: `${BASE}pwa-192x192.png`,
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: `${BASE}pwa-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-maskable-512x512.png',
+              src: `${BASE}pwa-maskable-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
