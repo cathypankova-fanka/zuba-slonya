@@ -24,6 +24,8 @@ import { IceCreamMission } from './components/IceCreamMission';
 import { SoupMission } from './components/SoupMission';
 import { SandwichMission } from './components/SandwichMission';
 import { DrinksMission } from './components/DrinksMission';
+import { PlayRouter } from './components/PlayRouter';
+import { PLAY_MODES, PlayMode } from './data/kitchenData';
 import { CakeMission } from './components/CakeMission';
 import { playVoice, setVoiceEnabled } from './utils/voice';
 import { SimonGame } from './components/SimonGame';
@@ -145,6 +147,16 @@ const MODE_TITLES: Record<AllGameMode, string> = {
   bigsmall: 'Большой и маленький',
   emotions: 'Эмоции',
   tv: 'Мультики',
+  milkshake: 'Милкшейк',
+  pancakes: 'Блинчики',
+  cookies: 'Печенье',
+  popcorn: 'Попкорн',
+  skewers: 'Фруктовые шашлычки',
+  picnic: 'Пикник',
+  bedtime: 'Уложи спать',
+  doctor: 'Доктор',
+  garden: 'Садик',
+  laundry: 'Стирка',
 };
 
 const KITCHEN_MODES = ['pizza', 'icecream', 'drinks', 'soup', 'sandwich', 'cake'];
@@ -1586,6 +1598,10 @@ export default function App() {
           voiceEnabled={soundEnabled}
           onTap={(pitch = 2) => soundEngine.playTapPop(soundEnabled, pitch)}
         />
+      ) : (PLAY_MODES as string[]).includes(gameMode) ? (
+        <main className="flex-1 min-h-0">
+          <PlayRouter mode={gameMode as PlayMode} character={activeCharacter} soundEnabled={soundEnabled} />
+        </main>
       ) : gameMode === 'feed' ||
         gameMode === 'shadow' ||
         gameMode === 'bubbles' ||
@@ -1849,7 +1865,7 @@ export default function App() {
           />
         ) : gameMode === 'pizza' || gameMode === 'icecream' || gameMode === 'soup' || gameMode === 'sandwich' || gameMode === 'cake' || gameMode === 'drinks' ? null : (
           <ModeToolbar
-            mode={gameMode}
+            mode={gameMode as Exclude<typeof gameMode, PlayMode>}
             washTool={washTool}
             messType={currentWash.messType}
             onSelectWashTool={handleSelectWashTool}

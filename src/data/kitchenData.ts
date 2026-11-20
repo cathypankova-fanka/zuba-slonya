@@ -1,5 +1,8 @@
 export type KitchenMode = 'pizza' | 'icecream' | 'drinks' | 'soup' | 'sandwich' | 'cake';
 export type MiniGameMode = 'feed' | 'shadow' | 'bubbles' | 'memory' | 'puzzle' | 'weather';
+/** Новые пошаговые мини-игры (CookKit/PlayKit) */
+export type PlayMode = 'milkshake' | 'pancakes' | 'cookies' | 'popcorn' | 'skewers' | 'picnic' | 'bedtime' | 'doctor' | 'garden' | 'laundry';
+export const PLAY_MODES: PlayMode[] = ['milkshake', 'pancakes', 'cookies', 'popcorn', 'skewers', 'picnic', 'bedtime', 'doctor', 'garden', 'laundry'];
 export type AllGameMode =
   | 'face'
   | 'tshirt'
@@ -9,6 +12,7 @@ export type AllGameMode =
   | 'bigsmall'
   | 'emotions'
   | 'tv'
+  | PlayMode
   | KitchenMode
   | MiniGameMode;
 

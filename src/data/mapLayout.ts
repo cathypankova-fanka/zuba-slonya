@@ -43,6 +43,17 @@ export const MAP_MARKERS: MapMarker[] = [
   // Телевизор — мультики про Зубу и Слоню
   { mode: 'tv', img: 'tv', aria: 'Телевизор', x: 2400, y: 2520 },
   { mode: 'emotions', img: 'emotions', aria: 'Эмоции', x: 4360, y: 2560 },
+  // Новые мини-игры
+  { mode: 'milkshake', img: 'milkshake', aria: 'Милкшейк', x: 1680, y: 2260 },
+  { mode: 'pancakes', img: 'pancakes', aria: 'Блинчики', x: 2840, y: 2320 },
+  { mode: 'cookies', img: 'cookies', aria: 'Печенье', x: 1720, y: 2800 },
+  { mode: 'popcorn', img: 'popcorn', aria: 'Попкорн', x: 3040, y: 2800 },
+  { mode: 'skewers', img: 'skewers', aria: 'Фруктовые шашлычки', x: 1150, y: 2150 },
+  { mode: 'picnic', img: 'picnic', aria: 'Пикник', x: 640, y: 2220 },
+  { mode: 'bedtime', img: 'bedtime', aria: 'Уложи спать', x: 1840, y: 960 },
+  { mode: 'doctor', img: 'doctor', aria: 'Доктор', x: 2960, y: 960 },
+  { mode: 'garden', img: 'garden', aria: 'Садик', x: 260, y: 1900 },
+  { mode: 'laundry', img: 'laundry', aria: 'Стирка', x: 4580, y: 1880 },
 ];
 
 export interface MapDecor {

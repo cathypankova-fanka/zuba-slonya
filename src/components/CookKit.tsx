@@ -20,19 +20,21 @@ export const CookScreen: React.FC<{
   done?: boolean;
   /** лента-карусель на всю ширину (без боковых отступов) */
   trayLoop?: boolean;
+  /** свой фон вместо кухонной столешницы (CSS background) */
+  bg?: string;
   children: React.ReactNode;
-}> = ({ stepKey, stepIdx, total, recipe, tray, done, trayLoop, children }) => {
+}> = ({ stepKey, stepIdx, total, recipe, tray, done, trayLoop, bg, children }) => {
   useEffect(() => {
     document.body.dataset.cook = '1';
     return () => { delete document.body.dataset.cook; };
   }, []);
   return (
-  <div className="fixed inset-0 z-[25] overflow-hidden select-none bg-[#F6D9B8]">
+  <div className="fixed inset-0 z-[25] overflow-hidden select-none bg-[#F6D9B8]" style={bg ? { background: bg } : undefined}>
     {/* столешница */}
-    <img src="/assets/cook/counter_land.webp" alt="" draggable={false}
-      className="absolute inset-0 w-full h-full object-cover pointer-events-none portrait:hidden" />
-    <img src="/assets/cook/counter_port.webp" alt="" draggable={false}
-      className="absolute inset-0 w-full h-full object-cover pointer-events-none landscape:hidden" />
+    {!bg && <img src="/assets/cook/counter_land.webp" alt="" draggable={false}
+      className="absolute inset-0 w-full h-full object-cover pointer-events-none portrait:hidden" />}
+    {!bg && <img src="/assets/cook/counter_port.webp" alt="" draggable={false}
+      className="absolute inset-0 w-full h-full object-cover pointer-events-none landscape:hidden" />}
 
     <div className="relative z-10 w-full h-full flex flex-col items-center">
       {/* прогресс: крупные кружки-шаги без текста */}

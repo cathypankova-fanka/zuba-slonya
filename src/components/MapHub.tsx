@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CharacterItem } from '../data/characters';
-import { AllGameMode } from '../data/kitchenData';
+import { AllGameMode, PLAY_MODES } from '../data/kitchenData';
 import { MAP_DECOR, MAP_MARKERS, MapMarker, START_POS, WORLD } from '../data/mapLayout';
 
 /**
@@ -180,7 +180,7 @@ export const MapHub: React.FC<MapHubProps> = ({
   const goTo = (m: MapMarker) => {
     if (suppressClick.current || walking || picking) return;
     onTap?.(3);
-    playVoice(`go_${m.mode}_${pickGoVariant()}`, voiceEnabled);
+    playVoice(`go_${m.mode}_${(PLAY_MODES as string[]).includes(m.mode) ? 1 : pickGoVariant()}`, voiceEnabled);
     const dx = m.x - helper.x;
     const dy = m.y + 120 - helper.y;
     const dist = Math.hypot(dx, dy);

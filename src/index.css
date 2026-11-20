@@ -307,3 +307,8 @@ body[data-cook='1'] .helper-corner {
   bottom: calc(min(13.5vmin, 120px) + 44px) !important;
   transition: bottom 0.3s;
 }
+
+@keyframes pageflip {
+  0% { transform: rotateY(0deg); opacity: 1; }
+  100% { transform: rotateY(-180deg); opacity: 0.2; }
+}
