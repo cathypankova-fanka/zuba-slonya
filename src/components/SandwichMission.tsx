@@ -5,8 +5,9 @@ import { getSandwichBreadAssetUrl, getSandwichFillingAssetUrl, getSandwichSpread
 import { pickReaction } from '../data/reactions';
 import { soundEngine } from '../utils/soundEngine';
 import { playVoice, whenVoiceIdle } from '../utils/voice';
-import { IdleHandPointer, useIdleHint } from './MiniGameShell';
-import { FeedServe, GoalCard, StepBar } from './MissionKit';
+import { useIdleHint } from './MiniGameShell';
+import { FeedServe } from './MissionKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
 
 /**
  * Бутерброд как «миссия» (картинки, без текста):
@@ -38,7 +39,7 @@ const STEPS = [
 ] as const;
 type StepId = (typeof STEPS)[number]['id'];
 
-const BOARD = 'min(58vw, 36vh)';
+const BOARD = 'min(60vmin, 540px)';
 const say = (id: string, on: boolean) => playVoice(id, on);
 const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
 const nameOf = (id: SandwichFillingId) => SANDWICH_FILLINGS.find((f) => f.id === id)?.name ?? '';
@@ -73,19 +74,23 @@ export const SandwichMission: React.FC<{ character: CharacterItem; soundEnabled:
   const [cutDone, setCutDone] = useState(false);
   const [servedKey, setServedKey] = useState(0);
   const reaction = useMemo(() => pickReaction('sandwich', character.id), [servedKey, character.id]);
-  const shelf = useMemo(() => shuffle([...recipe.layers, ...recipe.decoys]), [recipe]);
+  // на полке все начинки в бесконечной ленте
+  const shelf = useMemo(() => shuffle(SANDWICH_FILLINGS.map((f) => f.id)), [recipe]);
   const boardRef = useRef<HTMLDivElement>(null);
   const swipe = useRef<{ sx: number; sy: number } | null>(null);
-  const { showHint, resetIdle } = useIdleHint(7000, step !== 'serve');
+  const { resetIdle } = useIdleHint(7000, step !== 'serve');
 
+  const [doneFx, setDoneFx] = useState(false);
   const goNext = useCallback(
     (voice?: string) => {
       soundEngine.playGameOk(soundEnabled);
-      whenVoiceIdle(() => {
+      setDoneFx(true); // большая звезда: шаг выполнен
+      if (voice) window.setTimeout(() => say(voice, soundEnabled), 150);
+      window.setTimeout(() => whenVoiceIdle(() => {
+        setDoneFx(false);
         setStepIdx((i) => Math.min(i + 1, STEPS.length - 1));
         resetIdle();
-        if (voice) window.setTimeout(() => say(voice, soundEnabled), 250);
-      });
+      }), 900);
     },
     [soundEnabled, resetIdle],
   );
@@ -147,6 +152,7 @@ export const SandwichMission: React.FC<{ character: CharacterItem; soundEnabled:
   // ---------- слои ----------
   const pickFilling = (id: SandwichFillingId) => {
     resetIdle();
+    if (doneFx || placed.includes(id) || placed.length >= recipe.layers.length) return;
     const nextNeeded = recipe.layers[placed.length];
     if (id === nextNeeded) {
       soundEngine.playGamePop(soundEnabled, 4 + placed.length);
@@ -194,78 +200,71 @@ export const SandwichMission: React.FC<{ character: CharacterItem; soundEnabled:
     </div>
   );
 
-  const goalImages =
-    step === 'spread' ? (getSandwichSpreadAssetUrl(recipe.spread) ? [getSandwichSpreadAssetUrl(recipe.spread)!] : [])
-    : step === 'layers' ? recipe.layers.map((l) => getSandwichFillingAssetUrl(l))
-    : step === 'top' ? [getSandwichBreadAssetUrl(recipe.bread)]
-    : [];
+  // ---------- подсказки-жесты ----------
+  const plateEls = useRef<Record<string, HTMLButtonElement | null>>({});
+  const hintFromRef = useRef<HTMLButtonElement | null>(null);
+  const showGesture = useStepHint(step, 2600, 7000, step !== 'serve' && step !== 'pick' && !doneFx && !cutDone);
+  const nextLayer = recipe.layers[placed.length];
+  hintFromRef.current = step === 'layers' && nextLayer ? plateEls.current[nextLayer] ?? null : step === 'top' ? plateEls.current.__bread ?? null : null;
+  let hintKind: HintKind = 'drag';
+  let hintItem: string | undefined;
+  if (step === 'spread') hintKind = 'rub';
+  else if (step === 'cut') hintKind = 'swipe';
+  else if (step === 'layers') hintItem = nextLayer && getSandwichFillingAssetUrl(nextLayer);
+  else if (step === 'top') hintItem = getSandwichBreadAssetUrl(recipe.bread);
+
+  const spreadUrl = getSandwichSpreadAssetUrl(recipe.spread);
+  const tray =
+    step === 'spread' && spreadUrl ? <Plate src={spreadUrl} label="Намазка" />
+    : step === 'layers' ? <LoopScroller>{shelf.map((f) => (
+      <Plate key={f} src={getSandwichFillingAssetUrl(f)} label={nameOf(f)}
+        plateRef={(el) => { plateEls.current[f] = el; }}
+        onPick={() => pickFilling(f)} target={boardRef} onDrop={() => pickFilling(f)}
+        dim={placed.includes(f)} wrong={wrong === f} />
+    ))}</LoopScroller>
+    : step === 'top' && !topOn ? <Plate src={getSandwichBreadAssetUrl(recipe.bread)} label="Хлебушек"
+        plateRef={(el) => { plateEls.current.__bread = el; }} onPick={placeTop} target={boardRef} onDrop={placeTop} selected />
+    : undefined;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center gap-2 p-2 sm:p-3 select-none overflow-hidden">
-      <StepBar icons={STEPS.map((s) => s.icon)} idx={stepIdx} />
-
-      {step !== 'pick' && step !== 'serve' && (
-        <GoalCard dishNode={<SandwichPicture r={recipe} size="112px" closed={false} />} images={goalImages} numbered={step === 'layers'} />
+    <CookScreen stepKey={step} stepIdx={stepIdx} total={STEPS.length} done={doneFx} trayLoop={step === 'layers'}
+      recipe={step !== 'pick' && step !== 'serve' ? <SandwichPicture r={recipe} size="86%" closed={false} /> : undefined}
+      tray={tray}>
+      {step === 'pick' && (
+        <div className="flex gap-[3vmin] flex-wrap justify-center">
+          {RECIPES.map((r) => (
+            <button key={r.id} type="button" aria-label={r.title}
+              onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
+              className="rounded-full bg-white/90 shadow-xl p-[1.5vmin] flex items-center justify-center active:scale-95 transition-transform">
+              <SandwichPicture r={r} size="min(28vmin, 240px)" closed={false} />
+            </button>
+          ))}
+        </div>
       )}
 
-      <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center gap-3 relative">
-        {step === 'pick' && (
-          <div className="grid grid-cols-3 gap-3 sm:gap-5 p-2">
-            {RECIPES.map((r) => (
-              <button key={r.id} type="button" aria-label={r.title}
-                onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
-                className="toy-pill rounded-3xl p-3 flex items-center justify-center active:scale-95 transition-transform bg-white/90">
-                <SandwichPicture r={r} size="min(26vw, 160px)" closed={false} />
-              </button>
-            ))}
+      {(step === 'spread' || step === 'layers' || step === 'top' || step === 'cut') && (
+        <div className="rounded-[3rem] bg-[#C7A27C] shadow-[0_14px_0_#A07C58,0_24px_40px_rgba(0,0,0,0.25)] p-[3%] relative"
+          style={{ width: `calc(${BOARD} * 1.12)`, height: `calc(${BOARD} * 1.12)` }}>
+          <div
+            ref={boardRef}
+            onPointerDown={step === 'spread' || step === 'cut' ? spreadDown : undefined}
+            onPointerMove={step === 'spread' || step === 'cut' ? spreadMove : undefined}
+            onPointerUp={spreadUp}
+            onPointerCancel={spreadUp}
+            onClick={step === 'top' ? placeTop : undefined}
+            style={{ touchAction: 'none', width: '100%', height: '100%', cursor: 'pointer' }}
+          >
+            {sandwichBoard('100%', step === 'top' || step === 'cut', step === 'cut')}
           </div>
-        )}
+        </div>
+      )}
 
-        {(step === 'spread' || step === 'layers' || step === 'top' || step === 'cut') && (
-          <div className="relative flex flex-col items-center gap-3">
-            <div className="rounded-[2rem] bg-[#C7A27C] shadow-[0_10px_0_#A07C58] p-[4%] relative" style={{ width: `calc(${BOARD} * 1.12)`, height: `calc(${BOARD} * 1.12)` }}>
-              <div
-                ref={boardRef}
-                onPointerDown={step === 'spread' || step === 'cut' ? spreadDown : undefined}
-                onPointerMove={step === 'spread' || step === 'cut' ? spreadMove : undefined}
-                onPointerUp={spreadUp}
-                onPointerCancel={spreadUp}
-                onClick={step === 'top' ? placeTop : undefined}
-                style={{ touchAction: 'none', width: '100%', height: '100%', cursor: 'pointer' }}
-              >
-                {sandwichBoard('100%', step === 'top' || step === 'cut', step === 'cut')}
-              </div>
-              {step === 'spread' && showHint && <IdleHandPointer className="absolute left-[44%] top-[44%]" />}
-              {step === 'cut' && <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-5xl opacity-60">🔪</div>}
-            </div>
+      {step === 'serve' && (
+        <FeedServe character={character} reaction={reaction} runKey={servedKey} soundEnabled={soundEnabled} onRestart={restart}
+          dish={<SandwichPicture r={recipe} size="min(36vmin, 300px)" cut />} />
+      )}
 
-            {step === 'top' && !topOn && (
-              <button type="button" aria-label="Накрыть" onClick={placeTop} className="toy-pill px-3 py-2 active:scale-90 transition-transform animate-bounce">
-                <img src={getSandwichBreadAssetUrl(recipe.bread)} alt="" className="w-16 h-16 object-contain" />
-              </button>
-            )}
-
-            {step === 'layers' && (
-              <div className="toy-pill px-2 py-2 flex gap-2 flex-wrap justify-center">
-                {shelf.map((f) => {
-                  const used = placed.includes(f);
-                  return (
-                    <button key={f} type="button" aria-label={nameOf(f)} onClick={() => !used && pickFilling(f)}
-                      className={`w-[18vw] h-[18vw] max-w-[80px] max-h-[80px] rounded-2xl bg-white shadow flex items-center justify-center transition-all ${used ? 'opacity-25 scale-75' : wrong === f ? 'animate-[wiggle_0.4s] bg-[#FEE2E2]' : 'active:scale-90'}`}>
-                      <img src={getSandwichFillingAssetUrl(f)} alt="" draggable={false} className="w-[82%] h-[82%] object-contain" />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {step === 'serve' && (
-          <FeedServe character={character} reaction={reaction} runKey={servedKey} soundEnabled={soundEnabled} onRestart={restart}
-            dish={<SandwichPicture r={recipe} size="min(40vw, 24vh)" cut />} />
-        )}
-      </div>
-    </div>
+      <GestureHint show={showGesture} kind={hintKind} target={boardRef} from={hintKind === 'drag' ? hintFromRef : undefined} itemSrc={hintItem} />
+    </CookScreen>
   );
 };

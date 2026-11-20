@@ -7,7 +7,8 @@ import { ReactionHero } from './ReactionHero';
 import { soundEngine } from '../utils/soundEngine';
 import { playVoice, sayRandom, whenVoiceIdle } from '../utils/voice';
 import { IdleHandPointer, useIdleHint } from './MiniGameShell';
-import { FeedServe, GoalCard } from './MissionKit';
+import { FeedServe } from './MissionKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
 
 /**
  * Пицца как «миссия» из шагов (картинки, без текста):
@@ -42,7 +43,7 @@ const STEPS = [
 ] as const;
 type StepId = (typeof STEPS)[number]['id'];
 
-const BOARD = 'min(58vw, 36vh)';
+const BOARD = 'min(66vmin, 600px)';
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 const say = (id: string, on: boolean) => playVoice(id, on);
 
@@ -83,14 +84,17 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
   const need = recipe.toppings.length * recipe.perTopping;
   const { showHint, resetIdle } = useIdleHint(7000, step !== 'serve' && step !== 'bake');
 
+  const [doneFx, setDoneFx] = useState(false);
   const goNext = useCallback(
     (voice?: string) => {
       soundEngine.playGameOk(soundEnabled);
-      whenVoiceIdle(() => {
+      setDoneFx(true); // большая звезда: шаг выполнен
+      if (voice) window.setTimeout(() => say(voice, soundEnabled), 150);
+      window.setTimeout(() => whenVoiceIdle(() => {
+        setDoneFx(false);
         setStepIdx((i) => Math.min(i + 1, STEPS.length - 1));
         resetIdle();
-        if (voice) window.setTimeout(() => say(voice, soundEnabled), 250);
-      });
+      }), 900);
     },
     [soundEnabled, resetIdle],
   );
@@ -140,6 +144,9 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
   const placeTopping = (p: { x: number; y: number }) => {
     const id = selTop ?? recipe.toppings.find((t) => placed.filter((q) => q.id === t).length < recipe.perTopping);
     if (!id) return;
+    placeToppingId(id, p);
+  };
+  const placeToppingId = (id: PizzaToppingId, p: { x: number; y: number }) => {
     if (placed.filter((q) => q.id === id).length >= recipe.perTopping) return;
     soundEngine.playGamePop(soundEnabled, 5);
     const np = [...placed, { uid: `${id}-${Date.now()}`, id, x: p.x, y: p.y, r: rnd(-40, 40), s: rnd(0.9, 1.15) }];
@@ -147,6 +154,17 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
     const left = recipe.toppings.find((t) => np.filter((q) => q.id === t).length < recipe.perTopping);
     setSelTop(left ?? null);
     if (np.length >= need) window.setTimeout(() => goNext('pm_ok_top'), 400);
+  };
+
+  /** Вкусняшку перетащили с тарелки на пиццу */
+  const dropTopping = (id: PizzaToppingId, cx: number, cy: number) => {
+    const r = boardRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const x = ((cx - r.left) / r.width) * 2 - 1, y = ((cy - r.top) / r.height) * 2 - 1;
+    const d = Math.hypot(x, y);
+    const k = d > 0.78 ? 0.78 / d : 1;
+    setSelTop(id);
+    placeToppingId(id, { x: x * k, y: y * k });
   };
 
   const onMove = (e: React.PointerEvent) => {
@@ -289,124 +307,105 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
     </div>
   );
 
-  // ---------- интерфейс ----------
-  return (
-    <div className="flex-1 min-h-0 flex flex-col items-center gap-2 pt-1 relative overflow-hidden" onPointerDown={() => resetIdle()}>
-      {/* Панель шагов: картинки */}
-      <div className="toy-pill flex items-center gap-1 px-2 py-1 z-10">
-        {STEPS.map((s, i) => (
-          <button key={s.id} type="button" aria-label={`шаг ${i + 1}`}
-            onClick={() => { say(`pm_${s.id}`, soundEnabled); }}
-            className={`w-8 h-8 sm:w-11 sm:h-11 rounded-full text-lg sm:text-2xl flex items-center justify-center transition-all ${
-              i < stepIdx ? 'bg-[#10C97A] text-white scale-90' : i === stepIdx ? 'bg-[#FFB800] animate-pulse scale-110' : 'bg-white/70 opacity-60'}`}>
-            {i < stepIdx ? '✓' : s.icon}
-          </button>
-        ))}
-      </div>
+  // ---------- интерфейс: каждый шаг на весь экран ----------
+  const basketRef = useRef<HTMLDivElement>(null);
+  const ovenRef = useRef<HTMLButtonElement>(null);
+  const plateEls = useRef<Record<string, HTMLButtonElement | null>>({});
+  const hintFromRef = useRef<HTMLButtonElement | null>(null);
+  const showGesture = useStepHint(step, 2600, 7000, step !== 'serve' && step !== 'pick' && !doneFx && !(step === 'bake' && ovenState === 'baking'));
 
-      {/* Цель — готовая пицца крупно + то, что нужно на этом шаге */}
-      {step !== 'pick' && step !== 'serve' && (
-        <GoalCard
-          dishNode={<PizzaPreview r={recipe} size="112px" />}
-          images={
-            step === 'gather' || step === 'top' ? recipe.toppings.map((t) => getPizzaToppingAssetUrl(t))
-            : step === 'sauce' && sauceUrl ? [sauceUrl]
-            : step === 'cheese' ? ['/assets/items/pizza/cheese_layer.webp']
-            : []
-          }
-        />
+  const nextGather = recipe.toppings.find((t) => !basket.includes(t));
+  // на полке только нужные продукты + 2–3 лишних (не перегружаем экран)
+  // на полке все 12 продуктов в бесконечной ленте
+  const gatherShelf = useMemo(() => [...PIZZA_TOPPINGS].sort(() => Math.random() - 0.5), [recipe]);
+  const nextTop = recipe.toppings.find((t) => placed.filter((q) => q.id === t).length < recipe.perTopping);
+  const hintFromId = step === 'gather' ? nextGather : step === 'top' ? (selTop ?? nextTop) : undefined;
+  hintFromRef.current = hintFromId ? plateEls.current[hintFromId] ?? null : null;
+
+  let hintKind: HintKind = 'tap';
+  let hintTarget: React.RefObject<Element | null> = boardRef;
+  let hintItem: string | undefined;
+  if (step === 'gather') { hintKind = 'drag'; hintTarget = basketRef; hintItem = nextGather && getPizzaToppingAssetUrl(nextGather); }
+  else if (step === 'dough') hintKind = 'circle';
+  else if (step === 'sauce') hintKind = 'rub';
+  else if (step === 'cheese') hintKind = 'rub';
+  else if (step === 'top') { hintKind = 'drag'; hintItem = hintFromId && getPizzaToppingAssetUrl(hintFromId); }
+  else if (step === 'bake') { hintKind = 'tap'; hintTarget = ovenRef; }
+  else if (step === 'cut') hintKind = 'swipe';
+
+  const toppingName = (id: PizzaToppingId) => PIZZA_TOPPINGS.find((p) => p.id === id)?.name ?? '';
+
+  const tray =
+    step === 'gather' ? <LoopScroller>{gatherShelf.map((t) => (
+      <Plate key={t.id} src={getPizzaToppingAssetUrl(t.id)} label={t.name}
+        plateRef={(el) => { plateEls.current[t.id] = el; }}
+        onPick={() => pickIngredient(t.id)} target={basketRef} onDrop={() => pickIngredient(t.id)}
+        dim={basket.includes(t.id)} wrong={wrong === t.id} />
+    ))}</LoopScroller>
+    : step === 'sauce' && sauceUrl ? <Plate src={sauceUrl} label="Соус" />
+    : step === 'cheese' ? <Plate src="/assets/items/pizza/cheese_layer.webp" label="Сыр" />
+    : step === 'top' ? recipe.toppings.map((t) => {
+        const left = recipe.perTopping - placed.filter((q) => q.id === t).length;
+        return (
+          <Plate key={t} src={getPizzaToppingAssetUrl(t)} label={toppingName(t)}
+            plateRef={(el) => { plateEls.current[t] = el; }}
+            onPick={() => setSelTop(t)} target={boardRef} onDrop={(x, y) => dropTopping(t, x, y)}
+            selected={(selTop ?? nextTop) === t && left > 0} dim={left <= 0} badge={Math.max(left, 0)} />
+        );
+      })
+    : undefined;
+
+  return (
+    <CookScreen stepKey={step} stepIdx={stepIdx} total={STEPS.length} done={doneFx} trayLoop={step === 'gather'}
+      recipe={step !== 'pick' && step !== 'serve' ? <PizzaPreview r={recipe} size="92%" /> : undefined}
+      tray={tray}>
+      {step === 'pick' && (
+        <div className="grid grid-cols-2 gap-[3vmin]">
+          {RECIPES.map((r) => (
+            <button key={r.id} type="button" aria-label={r.title}
+              onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
+              className="rounded-full bg-white/90 shadow-xl p-[1.5vmin] active:scale-95 transition-transform">
+              <PizzaPreview r={r} size="min(32vmin, 260px)" />
+            </button>
+          ))}
+        </div>
       )}
 
-      <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center gap-3 relative">
-        {step === 'pick' && (
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 p-2">
-            {RECIPES.map((r) => (
-              <button key={r.id} type="button" aria-label={r.title}
-                onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
-                className="toy-pill rounded-3xl p-3 flex flex-col items-center gap-1 active:scale-95 transition-transform bg-white/90">
-                <div className="relative w-[34vw] h-[34vw] max-w-[190px] max-h-[190px] rounded-full overflow-hidden bg-[#FDE68A] flex items-center justify-center">
-                  <img src="/assets/items/pizza/dough.webp" alt="" className="absolute inset-0 w-full h-full object-contain" />
-                  {getPizzaSauceAssetUrl(r.sauce) && <img src={getPizzaSauceAssetUrl(r.sauce)!} alt="" className="absolute inset-[8%] w-[84%] h-[84%] object-contain" />}
-                  {r.toppings.flatMap((t, ti) => [0, 1, 2].map((k) => (
-                    <img key={`${t}${k}`} src={getPizzaToppingAssetUrl(t)} alt="" className="absolute w-[22%]"
-                      style={{ left: `${50 + 26 * Math.cos((ti * 3 + k) * 1.3)}%`, top: `${50 + 26 * Math.sin((ti * 3 + k) * 1.3)}%`, transform: 'translate(-50%,-50%)' }} />
-                  )))}
-                </div>
-              </button>
-            ))}
+      {step === 'gather' && (
+        <div ref={basketRef} className="relative flex flex-col items-center justify-end" style={{ width: 'min(58vmin, 480px)', height: 'min(44vmin, 360px)' }}>
+          <div className="absolute inset-x-[8%] bottom-[18%] flex flex-wrap justify-center gap-1 z-10">
+            {basket.map((b) => <img key={b} src={getPizzaToppingAssetUrl(b)} alt="" className="w-[22%] object-contain animate-pop-in drop-shadow" />)}
           </div>
-        )}
+          <div className="text-[min(40vmin,330px)] leading-none select-none">🧺</div>
+        </div>
+      )}
 
-        {step === 'gather' && (
-          <div className="flex flex-col items-center gap-3 w-full px-2">
-            <div className="text-5xl">🧊 ➜ 🧺</div>
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 bg-white/80 rounded-3xl p-3 shadow-inner">
-              {PIZZA_TOPPINGS.map((t) => (
-                <button key={t.id} type="button" aria-label={t.name} onClick={() => pickIngredient(t.id)}
-                  className={`w-[17vw] h-[17vw] max-w-[86px] max-h-[86px] rounded-2xl bg-white shadow flex items-center justify-center transition-all ${
-                    basket.includes(t.id) ? 'opacity-30 scale-75' : wrong === t.id ? 'animate-[wiggle_0.4s]' : 'active:scale-90'}`}
-                  style={wrong === t.id ? { background: '#FEE2E2' } : undefined}>
-                  <img src={getPizzaToppingAssetUrl(t.id)} alt="" draggable={false} className="w-[80%] h-[80%] object-contain" />
-                </button>
-              ))}
-            </div>
-            <div className="toy-pill px-3 py-2 flex items-center gap-1 min-h-[56px] min-w-[120px] justify-center">
-              <span className="text-3xl">🧺</span>
-              {basket.map((b) => <img key={b} src={getPizzaToppingAssetUrl(b)} alt="" className="w-9 h-9 object-contain" />)}
-            </div>
+      {(step === 'dough' || step === 'sauce' || step === 'cheese' || step === 'top' || step === 'cut') && (
+        <div className="rounded-full bg-[#C7A27C] shadow-[0_14px_0_#A07C58,0_24px_40px_rgba(0,0,0,0.25)] flex items-center justify-center"
+          style={{ width: `calc(${BOARD} * 1.1)`, height: `calc(${BOARD} * 1.1)` }}>
+          {pizzaBoard(true)}
+        </div>
+      )}
+
+      {step === 'bake' && (
+        <button ref={ovenRef} type="button" aria-label="Духовка" onClick={ovenState === 'idle' ? startBake : takeOut}
+          className="relative rounded-[3rem] bg-gradient-to-b from-[#64748B] to-[#334155] shadow-2xl p-[2.5vmin] active:scale-95 transition-transform"
+          style={{ width: 'min(86vmin, 720px)', height: 'min(60vmin, 500px)' }}>
+          <div className="w-full h-full rounded-[2rem] bg-[#1E293B] overflow-hidden relative flex items-center justify-center"
+            style={{ boxShadow: ovenState === 'baking' ? 'inset 0 0 90px #FB923C' : 'inset 0 0 20px #000' }}>
+            <div className="w-[58%]" style={{ aspectRatio: '1', opacity: ovenState === 'idle' ? 0.25 : 1, transition: 'opacity .6s' }}>{pizzaBoard(false, '100%')}</div>
+            {ovenState === 'baking' && <div className="absolute left-0 bottom-0 h-3 bg-[#FB923C]" style={{ width: `${bakePct * 100}%` }} />}
           </div>
-        )}
+          <div className="absolute -top-[7vmin] left-1/2 -translate-x-1/2 text-[9vmin]">{ovenState === 'idle' ? '🔥' : ovenState === 'baking' ? '⏳' : '🔔'}</div>
+        </button>
+      )}
 
-        {(step === 'dough' || step === 'sauce' || step === 'cheese' || step === 'top' || step === 'cut') && (
-          <div className="relative">
-            <div className="rounded-full bg-[#C7A27C] shadow-[0_10px_0_#A07C58] p-[3%]" style={{ width: `calc(${BOARD} * 1.12)`, height: `calc(${BOARD} * 1.12)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {pizzaBoard(true)}
-            </div>
-            {step === 'dough' && <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-6xl opacity-60">🔄</div>}
-            {step === 'cut' && <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-5xl opacity-70">🔪✂️</div>}
-            {showHint && !step.startsWith('x') && <IdleHandPointer className="absolute left-[44%] top-[44%]" />}
-          </div>
-        )}
+      {step === 'serve' && (
+        <FeedServe character={character} reaction={reaction} runKey={servedKey} soundEnabled={soundEnabled} onRestart={restart}
+          dish={pizzaBoard(false, 'min(40vmin, 320px)')} />
+      )}
 
-        {step === 'top' && (
-          <div className="toy-pill px-2 py-2 flex gap-2">
-            {recipe.toppings.map((t) => {
-              const left = recipe.perTopping - placed.filter((q) => q.id === t).length;
-              return (
-                <button key={t} type="button" aria-label={PIZZA_TOPPINGS.find((p) => p.id === t)?.name} onClick={() => setSelTop(t)}
-                  className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white flex items-center justify-center ${selTop === t || (!selTop && left > 0 && recipe.toppings.find((x) => placed.filter((q) => q.id === x).length < recipe.perTopping) === t) ? 'ring-4 ring-[#FFB800] scale-110' : ''} ${left <= 0 ? 'opacity-30' : ''}`}>
-                  <img src={getPizzaToppingAssetUrl(t)} alt="" className="w-[80%] h-[80%] object-contain" />
-                  <span className="absolute -top-1 -right-1 bg-[#FF3B5C] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{Math.max(left, 0)}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {step === 'bake' && (
-          <div className="flex flex-col items-center gap-3">
-            <button type="button" aria-label="Духовка" onClick={ovenState === 'idle' ? startBake : takeOut}
-              className="relative rounded-[2rem] bg-gradient-to-b from-[#64748B] to-[#334155] shadow-xl p-4 active:scale-95 transition-transform"
-              style={{ width: 'min(70vw, 340px)', height: 'min(50vw, 250px)' }}>
-              <div className="w-full h-full rounded-2xl bg-[#1E293B] overflow-hidden relative flex items-center justify-center"
-                style={{ boxShadow: ovenState === 'baking' ? 'inset 0 0 60px #FB923C' : 'inset 0 0 20px #000' }}>
-                <div className="absolute inset-0 transition-all duration-700 flex items-center justify-center"
-                  style={{ transform: ovenState === 'idle' ? 'translateY(120%) scale(0.9)' : 'translateY(0) scale(0.55)' }}>
-                  <div className="w-[70%]" style={{ aspectRatio: '1' }}>{pizzaBoard(false)}</div>
-                </div>
-                {ovenState === 'baking' && <div className="absolute inset-x-0 bottom-0 h-2 bg-[#FB923C]" style={{ width: `${bakePct * 100}%` }} />}
-              </div>
-              <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-4xl">{ovenState === 'idle' ? '👆🔥' : ovenState === 'baking' ? '⏳' : '🔔'}</div>
-            </button>
-            {ovenState === 'idle' && <div className="w-28 sm:w-36"><div className="w-full" style={{ aspectRatio: '1' }}>{pizzaBoard(false)}</div></div>}
-          </div>
-        )}
-
-        {step === 'serve' && (
-          <FeedServe character={character} reaction={reaction} runKey={servedKey} soundEnabled={soundEnabled} onRestart={restart}
-            dish={pizzaBoard(false, 'min(36vw, 22vh)')} />
-        )}
-      </div>
-    </div>
+      <GestureHint show={showGesture} kind={hintKind} target={hintTarget} from={hintKind === 'drag' ? hintFromRef : undefined} itemSrc={hintItem} />
+    </CookScreen>
   );
 };

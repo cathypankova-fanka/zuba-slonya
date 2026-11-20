@@ -6,8 +6,9 @@ import { pickReaction } from '../data/reactions';
 import { ReactionHero } from './ReactionHero';
 import { soundEngine } from '../utils/soundEngine';
 import { playVoice, sayRandom, whenVoiceIdle } from '../utils/voice';
-import { IdleHandPointer, useIdleHint } from './MiniGameShell';
-import { FeedServe, GoalCard, StepBar } from './MissionKit';
+import { useIdleHint } from './MiniGameShell';
+import { FeedServe } from './MissionKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
 
 interface Recipe { id: string; broth: string; color: string; items: SoupIngredientId[]; toppings: SoupIngredientId[] }
 const RECIPES: Recipe[] = [
@@ -39,11 +40,15 @@ const Pot: React.FC<{ broth: string; filled: boolean; items: SoupIngredientId[];
   <div className="relative" style={{ width: size, height: `calc(${size} * 0.83)` }}>
     <img src={S2('pot_open')} alt="" draggable={false} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
     <div className="absolute pointer-events-none" style={{ left: '15%', top: '9%', width: '67%', height: '30%', opacity: filled ? 1 : 0, transition: 'opacity 0.6s' }}>
-      <img src={S2(`broth_${broth}`)} alt="" draggable={false} className="absolute inset-0 w-full h-full object-fill" style={{ transform: `rotate(${turn * 25}deg) scaleY(1)`, transition: 'transform 0.3s' }} />
-      {items.map((p, i) => (
-        <img key={p} src={chopped(p)} alt="" draggable={false} className="absolute w-[34%] soup-drop"
-          style={{ left: `${8 + ((i * 31 + 6) % 52)}%`, top: `${8 + ((i * 23) % 30)}%`, filter: 'drop-shadow(0 2px 2px rgba(0,0,0,.25))' }} />
-      ))}
+      <img src={S2(`broth_${broth}`)} alt="" draggable={false} className="absolute inset-0 w-full h-full object-fill" />
+      {items.map((p, i) => {
+        // кусочки плавают по кругу, когда помешиваем
+        const ang = (i / Math.max(1, items.length)) * Math.PI * 2 + turn * Math.PI * 2;
+        return (
+          <img key={p} src={chopped(p)} alt="" draggable={false} className="absolute w-[30%] soup-drop"
+            style={{ left: `${35 + Math.cos(ang) * 24}%`, top: `${12 + Math.sin(ang) * 22}%`, transition: 'left .25s, top .25s', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,.25))' }} />
+        );
+      })}
     </div>
     {hot && [0, 1, 2].map((k) => (
       <img key={k} src={S2('steam')} alt="" draggable={false} className="absolute w-[20%] soup-steam pointer-events-none" style={{ left: `${24 + k * 20}%`, top: '2%', animationDelay: `${k * 0.8}s` }} />
@@ -66,19 +71,22 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   const [wrong, setWrong] = useState<string | null>(null);
   const [key, setKey] = useState(0);
   const reaction = useMemo(() => pickReaction('soup', character.id), [key, character.id]);
-  const { showHint, resetIdle } = useIdleHint(7000, step !== 'serve');
-  const potRef = useRef<HTMLDivElement>(null);
+  const { resetIdle } = useIdleHint(7000, step !== 'serve');
+  const potRef = useRef<HTMLDivElement | null>(null);
   const spin = useRef<{ down: boolean; a0: number }>({ down: false, a0: 0 });
   const chopAt = useRef<Record<string, { t: number; x: number }>>({});
 
+  const [doneFx, setDoneFx] = useState(false);
   const next = useCallback((v?: string) => {
     soundEngine.playGameOk(soundEnabled);
-    // сначала договаривается фраза про предмет, потом переход к следующему шагу
-    whenVoiceIdle(() => {
+    setDoneFx(true); // большая звезда: шаг выполнен
+    if (v) window.setTimeout(() => say(v, soundEnabled), 150);
+    // сначала договаривается фраза, потом переход к следующему шагу
+    window.setTimeout(() => whenVoiceIdle(() => {
+      setDoneFx(false);
       setIdx((i) => Math.min(i + 1, STEPS.length - 1));
       resetIdle();
-      if (v) window.setTimeout(() => say(v, soundEnabled), 250);
-    });
+    }), 900);
   }, [soundEnabled, resetIdle]);
 
   useEffect(() => {
@@ -136,128 +144,174 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   };
 
   const dishUrl = getSoupBaseAssetUrl(recipe.broth) ?? undefined;
-  const potSize = 'min(72vw, 40vh)';
+  const potSize = 'min(64vmin, 560px)';
   const restart = () => { setIdx(0); setBasket([]); setCuts({}); setInPot([]); setTurns(0); setTasted(false); setTops([]); };
 
-  const tray = (i: { id: SoupIngredientId; name: string; img?: string }, cb: () => void, dim: boolean) => (
-    <button key={i.id} type="button" aria-label={i.name} onClick={cb}
-      className={`w-[18vw] h-[18vw] max-w-[88px] max-h-[88px] rounded-2xl bg-white shadow flex items-center justify-center transition-all ${dim ? 'opacity-25 scale-75' : wrong === i.id ? 'animate-[wiggle_0.4s] !bg-red-100' : 'active:scale-90'}`}>
-      <img src={i.img ?? ing(i.id)} alt="" draggable={false} className="w-[84%] h-[84%] object-contain" />
-    </button>
+  // ---------- действия ----------
+  const pantryPick = (id: SoupIngredientId) => {
+    resetIdle();
+    if (doneFx || basket.includes(id)) return;
+    if (recipe.items.includes(id)) { soundEngine.playGameOk(soundEnabled); setBasket((b) => (b.includes(id) ? b : [...b, id])); } else oops(id);
+  };
+  const toPot = (id: SoupIngredientId) => {
+    resetIdle();
+    if (doneFx || inPot.includes(id)) return;
+    soundEngine.playGamePop(soundEnabled, 4);
+    setInPot((a) => (a.includes(id) ? a : [...a, id]));
+  };
+  const addTop = (id: SoupIngredientId) => {
+    resetIdle();
+    if (doneFx) return;
+    if (!recipe.toppings.includes(id)) return oops(id);
+    if (tops.includes(id)) return;
+    soundEngine.playGamePop(soundEnabled, 6);
+    setTops((t) => [...t, id]);
+  };
+  const taste = () => {
+    if (tasted) return;
+    setTasted(true); soundEngine.playGameOk(soundEnabled); say('sm_hot', soundEnabled);
+    window.setTimeout(() => next(), 2000);
+  };
+
+  // ---------- подсказки-жесты ----------
+  const centerRef = useRef<HTMLDivElement>(null);
+  const spoonRef = useRef<HTMLButtonElement>(null);
+  const plateEls = useRef<Record<string, HTMLButtonElement | null>>({});
+  const chopEls = useRef<Record<string, HTMLDivElement | null>>({});
+  const hintFromRef = useRef<HTMLButtonElement | null>(null);
+  const chopTargetRef = useRef<HTMLDivElement | null>(null);
+  const showGesture = useStepHint(step, 2600, 7000, step !== 'serve' && step !== 'pick' && !doneFx && !tasted);
+  const pantryShelf = useMemo(() => [...MAIN].sort(() => Math.random() - 0.5), [recipe]);
+
+  const nextNeed = step === 'pantry' ? recipe.items.find((x) => !basket.includes(x))
+    : step === 'pot' ? recipe.items.find((x) => !inPot.includes(x))
+    : step === 'garnish' ? recipe.toppings.find((x) => !tops.includes(x)) : undefined;
+  const nextChop = recipe.items.find((x) => (cuts[x] ?? 0) < CHOPS);
+  hintFromRef.current = nextNeed ? plateEls.current[nextNeed] ?? null : null;
+  chopTargetRef.current = nextChop ? chopEls.current[nextChop] ?? null : null;
+
+  let hintKind: HintKind = 'drag';
+  let hintTarget: React.RefObject<Element | null> = centerRef;
+  let hintItem: string | undefined = nextNeed ? (step === 'pot' ? chopped(nextNeed) : ing(nextNeed)) : undefined;
+  if (step === 'chop') { hintKind = 'tap'; hintTarget = chopTargetRef; hintItem = undefined; }
+  else if (step === 'stir') { hintKind = 'circle'; hintItem = undefined; }
+  else if (step === 'taste') { hintKind = 'tap'; hintTarget = spoonRef; hintItem = undefined; }
+
+  const nameOf = (id: SoupIngredientId) => SOUP_INGREDIENTS.find((x) => x.id === id)?.name ?? '';
+  const pRef = (id: string) => (el: HTMLButtonElement | null) => { plateEls.current[id] = el; };
+
+  const trayNode =
+    step === 'pantry' ? <LoopScroller>{pantryShelf.map((i) => (
+      <Plate key={i.id} src={ing(i.id)} label={i.name} plateRef={pRef(i.id)}
+        onPick={() => pantryPick(i.id)} target={centerRef} onDrop={() => pantryPick(i.id)}
+        dim={basket.includes(i.id)} wrong={wrong === i.id} />
+    ))}</LoopScroller>
+    : step === 'pot' ? recipe.items.map((p) => (
+      <Plate key={p} src={chopped(p)} label={nameOf(p)} plateRef={pRef(p)}
+        onPick={() => toPot(p)} target={centerRef} onDrop={() => toPot(p)} dim={inPot.includes(p)} />
+    ))
+    : step === 'garnish' ? TOP.map((i) => (
+      <Plate key={i.id} src={ing(i.id)} label={i.name} plateRef={pRef(i.id)}
+        onPick={() => addTop(i.id)} target={centerRef} onDrop={() => addTop(i.id)}
+        dim={tops.includes(i.id)} wrong={wrong === i.id} />
+    ))
+    : undefined;
+
+  const bowl = (size: string, ref?: React.Ref<HTMLDivElement>) => (
+    <div ref={ref} className="relative" style={{ width: size, height: `calc(${size} * 0.83)` }}>
+      <img src={dishUrl} alt="" draggable={false} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+      {tops.map((p, i) => <img key={p} src={ing(p)} alt="" draggable={false} className="absolute w-[30%] soup-drop pointer-events-none" style={{ left: `${30 + i * 16}%`, top: `${20 + i * 8}%` }} />)}
+    </div>
   );
 
-  const goal = step === 'garnish' ? recipe.toppings : recipe.items;
-
   return (
-    <div className="flex-1 min-h-0 flex flex-col items-center gap-2 pt-1 relative overflow-hidden" onPointerDown={() => resetIdle()}>
-      <StepBar icons={ICONS} idx={idx} onTap={(i) => say(`sm_${STEPS[i]}`, soundEnabled)} />
-      {step !== 'pick' && step !== 'serve' && <GoalCard dish={dishUrl} images={step === 'stir' || step === 'taste' ? [] : goal.map(ing)} />}
-      <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center gap-3">
-        {step === 'pick' && (
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 p-2">
-            {RECIPES.map((r) => (
-              <button key={r.id} type="button" aria-label={`рецепт ${r.id}`} onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => next(), 250); }}
-                className="toy-pill rounded-3xl p-3 bg-white/90 active:scale-95 transition-transform flex flex-col items-center gap-1">
-                <img src={getSoupBaseAssetUrl(r.broth)!} alt="" draggable={false} className="w-[34vw] max-w-[190px] h-[28vw] max-h-[160px] object-contain" />
-                <div className="flex gap-1">{r.items.map((p) => <img key={p} src={ing(p)} alt="" className="w-7 h-7 object-contain" />)}</div>
-              </button>
-            ))}
-          </div>
-        )}
+    <CookScreen stepKey={step} stepIdx={idx} total={STEPS.length} done={doneFx} trayLoop={step === 'pantry'}
+      recipe={step !== 'pick' && step !== 'serve' ? <img src={dishUrl} alt="" className="w-[88%] h-[88%] object-contain" /> : undefined}
+      tray={trayNode}>
+      {step === 'pick' && (
+        <div className="grid grid-cols-2 gap-[3vmin]">
+          {RECIPES.map((r) => (
+            <button key={r.id} type="button" aria-label={`рецепт ${r.id}`} onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => next(), 250); }}
+              className="rounded-[2.5rem] bg-white/90 shadow-xl p-[1.5vmin] active:scale-95 transition-transform flex flex-col items-center gap-1">
+              <img src={getSoupBaseAssetUrl(r.broth)!} alt="" draggable={false} className="object-contain" style={{ width: 'min(30vmin, 250px)', height: 'min(24vmin, 200px)' }} />
+              <div className="flex gap-1">{r.items.map((p) => <img key={p} src={ing(p)} alt="" className="w-[6vmin] h-[6vmin] max-w-12 max-h-12 object-contain" />)}</div>
+            </button>
+          ))}
+        </div>
+      )}
 
-        {step === 'pantry' && (
-          <div className="flex flex-col items-center gap-3 px-2">
-            <div className="text-5xl">🗄️ ➜ 🧺</div>
-            <div className="grid grid-cols-3 gap-2 bg-white/80 rounded-3xl p-3">
-              {MAIN.map((i) => tray(i, () => { resetIdle(); if (recipe.items.includes(i.id)) { soundEngine.playGameOk(soundEnabled); setBasket((b) => (b.includes(i.id) ? b : [...b, i.id])); } else oops(i.id); }, basket.includes(i.id)))}
-            </div>
-            <div className="toy-pill px-3 py-2 flex items-center gap-1 min-h-[56px] min-w-[120px] justify-center"><span className="text-3xl">🧺</span>{basket.map((b) => <img key={b} src={ing(b)} alt="" className="w-9 h-9 object-contain" />)}</div>
+      {step === 'pantry' && (
+        <div ref={centerRef} className="relative flex flex-col items-center justify-end" style={{ width: 'min(58vmin, 480px)', height: 'min(44vmin, 360px)' }}>
+          <div className="absolute inset-x-[8%] bottom-[18%] flex flex-wrap justify-center gap-1 z-10">
+            {basket.map((b) => <img key={b} src={ing(b)} alt="" className="w-[24%] object-contain animate-pop-in drop-shadow" />)}
           </div>
-        )}
+          <div className="text-[min(40vmin,330px)] leading-none select-none">🧺</div>
+        </div>
+      )}
 
-        {step === 'chop' && (
-          <div className="flex flex-col items-center gap-2">
-            <div className="text-4xl">👆👆👆</div>
-            <div className="relative" style={{ width: 'min(92vw, 560px)', touchAction: 'none' }}>
-              <img src={S2('board')} alt="" draggable={false} className="w-full pointer-events-none drop-shadow-xl" />
-              <div className="absolute inset-0 flex items-center justify-center gap-2 px-[8%]">
-                {recipe.items.map((p) => {
-                  const c = cuts[p] ?? 0;
-                  const done = c >= CHOPS;
-                  return (
-                    <div key={p} className="flex flex-col items-center gap-1" style={{ width: `${88 / recipe.items.length}%` }}>
-                      <div
-                        onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); chopAt.current[p] = { t: chopAt.current[p]?.t ?? 0, x: e.clientX }; chop(p, e.clientX); }}
-                        onPointerMove={(e) => chopMove(e, p)}
-                        className={`relative w-full aspect-square flex items-center justify-center select-none cursor-pointer ${hit === p ? 'chop-hit' : ''}`}>
-                        <img src={done ? chopped(p) : raw(p)} alt="" draggable={false} className={`w-[92%] h-[92%] object-contain pointer-events-none drop-shadow-lg ${done ? 'piece-pop' : ''}`}
-                          style={{ ['--r' as string]: '0deg', clipPath: undefined } as React.CSSProperties} />
-                        {!done && [...Array(c)].map((_, k) => (
-                          <span key={k} className="absolute top-[12%] bottom-[12%] w-[4px] rounded bg-[#5B3A1E]/70 pointer-events-none" style={{ left: `${30 + k * 20}%`, transform: 'rotate(10deg)' }} />
-                        ))}
-                        <img src={S2('knife')} alt="" draggable={false} className="absolute w-[70%] pointer-events-none transition-all duration-150"
-                          style={{ right: '-18%', top: hit === p ? '-6%' : '-52%', transform: `rotate(${hit === p ? 50 : 20}deg)`, opacity: done ? 0 : 1 }} />
-                        {done && <span className="absolute -top-2 -right-1 text-3xl">✅</span>}
-                      </div>
-                      <div className="flex gap-1">{[...Array(CHOPS)].map((_, k) => <span key={k} className={`w-3 h-3 rounded-full ${k < c ? 'bg-[#10C97A]' : 'bg-white/80'}`} />)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+      {step === 'chop' && (
+        <div className="relative" style={{ width: 'min(92vmin, 820px)', touchAction: 'none' }}>
+          <img src={S2('board')} alt="" draggable={false} className="w-full pointer-events-none drop-shadow-xl" />
+          <div className="absolute inset-0 flex items-center justify-center gap-[2vmin] px-[8%]">
+            {recipe.items.map((p) => {
+              const c = cuts[p] ?? 0;
+              const done = c >= CHOPS;
+              return (
+                <div key={p} className="flex flex-col items-center gap-1" style={{ width: `${88 / recipe.items.length}%` }}>
+                  <div ref={(el) => { chopEls.current[p] = el; }}
+                    onPointerDown={(e) => { try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } chopAt.current[p] = { t: chopAt.current[p]?.t ?? 0, x: e.clientX }; chop(p, e.clientX); }}
+                    onPointerMove={(e) => chopMove(e, p)}
+                    className={`relative w-full aspect-square flex items-center justify-center select-none cursor-pointer ${hit === p ? 'chop-hit' : ''}`}>
+                    <img src={done ? chopped(p) : raw(p)} alt="" draggable={false} className={`w-[92%] h-[92%] object-contain pointer-events-none drop-shadow-lg ${done ? 'piece-pop' : ''}`} />
+                    {!done && [...Array(c)].map((_, k) => (
+                      <span key={k} className="absolute top-[12%] bottom-[12%] w-[5px] rounded bg-[#5B3A1E]/70 pointer-events-none" style={{ left: `${30 + k * 20}%`, transform: 'rotate(10deg)' }} />
+                    ))}
+                    <img src={S2('knife')} alt="" draggable={false} className="absolute w-[70%] pointer-events-none transition-all duration-150"
+                      style={{ right: '-18%', top: hit === p ? '-6%' : '-52%', transform: `rotate(${hit === p ? 50 : 20}deg)`, opacity: done ? 0 : 1 }} />
+                    {done && <span className="absolute -top-2 -right-1 text-[5vmin]">✅</span>}
+                  </div>
+                  <div className="flex gap-1.5">{[...Array(CHOPS)].map((_, k) => <span key={k} className={`w-4 h-4 rounded-full border-2 border-white ${k < c ? 'bg-[#10C97A]' : 'bg-white/70'}`} />)}</div>
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
+      )}
 
-        {(step === 'pot' || step === 'stir' || step === 'taste') && (
-          <div className="flex flex-col items-center gap-3">
-            <div ref={potRef} className="relative" style={{ touchAction: 'none' }} onPointerDown={step === 'stir' ? sDown : undefined} onPointerMove={sMove} onPointerUp={sUp} onPointerCancel={sUp}>
-              <Pot broth={recipe.broth} filled={idx >= 3} items={inPot} turn={turns} hot={step !== 'pot' || inPot.length > 0} size={potSize}>
-                {step === 'stir' && (
-                  <>
-                    <img src={S2('ladle')} alt="" draggable={false} className="absolute w-[34%] pointer-events-none drop-shadow-lg" style={{ left: `${30 + 14 * Math.cos(turns * 6.28)}%`, top: `${-4 + 6 * Math.sin(turns * 6.28)}%`, transform: 'rotate(28deg)', transformOrigin: '30% 80%' }} />
-                    <span className="absolute inset-x-0 -bottom-8 text-center text-3xl pointer-events-none">🔄 {'●'.repeat(Math.floor(turns))}{'○'.repeat(3 - Math.floor(turns))}</span>
-                  </>
-                )}
-                {step === 'stir' && showHint && <IdleHandPointer className="absolute left-[40%] top-[26%]" />}
-              </Pot>
-            </div>
-            {step === 'pot' && (
-              <div className="toy-pill px-2 py-2 flex gap-2">
-                {recipe.items.map((p) => tray({ id: p, name: SOUP_INGREDIENTS.find((x) => x.id === p)!.name, img: chopped(p) }, () => { resetIdle(); if (!inPot.includes(p)) { soundEngine.playGamePop(soundEnabled, 4); setInPot((a) => [...a, p]); } }, inPot.includes(p)))}
+      {(step === 'pot' || step === 'stir' || step === 'taste') && (
+        <div className="flex items-center gap-[4vmin]">
+          <div ref={(el) => { potRef.current = el; centerRef.current = el; }} className="relative" style={{ touchAction: 'none' }}
+            onPointerDown={step === 'stir' ? sDown : undefined} onPointerMove={sMove} onPointerUp={sUp} onPointerCancel={sUp}>
+            <Pot broth={recipe.broth} filled={idx >= 3} items={inPot} turn={turns} hot={step !== 'pot' || inPot.length > 0} size={potSize}>
+              {step === 'stir' && (
+                <img src={S2('ladle')} alt="" draggable={false} className="absolute w-[34%] pointer-events-none drop-shadow-lg" style={{ left: `${30 + 14 * Math.cos(turns * 6.28)}%`, top: `${-4 + 6 * Math.sin(turns * 6.28)}%`, transform: 'rotate(28deg)', transformOrigin: '30% 80%' }} />
+              )}
+            </Pot>
+            {step === 'stir' && (
+              <div className="absolute inset-x-0 -bottom-[5vmin] flex justify-center gap-2 pointer-events-none">
+                {[0, 1, 2].map((k) => <span key={k} className={`w-5 h-5 rounded-full border-[3px] border-white ${k < Math.floor(turns) ? 'bg-[#10C97A]' : 'bg-white/70'}`} />)}
               </div>
             )}
-            {step === 'taste' && (
-              <>
-                <button type="button" aria-label="Попробовать" onClick={() => { if (tasted) return; setTasted(true); soundEngine.playGameOk(soundEnabled); say('sm_hot', soundEnabled); window.setTimeout(() => next(), 2000); }}
-                  className="toy-pill w-24 h-24 text-5xl flex items-center justify-center active:scale-90 transition-transform">{tasted ? '🥵' : '🥄'}</button>
-                {tasted && <div className="text-6xl animate-bounce">💨</div>}
-              </>
-            )}
           </div>
-        )}
-
-        {step === 'garnish' && (
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative" style={{ width: 'min(60vw, 34vh)', height: 'min(50vw, 28vh)' }}>
-              <img src={dishUrl} alt="" draggable={false} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
-              {tops.map((p, i) => <img key={p} src={ing(p)} alt="" className="absolute w-[34%] soup-drop pointer-events-none" style={{ left: `${30 + i * 16}%`, top: `${22 + i * 8}%` }} />)}
+          {step === 'taste' && (
+            <div className="flex flex-col items-center gap-2">
+              <button ref={spoonRef} type="button" aria-label="Попробовать" onClick={taste}
+                className="rounded-full bg-white shadow-xl flex items-center justify-center active:scale-90 transition-transform"
+                style={{ width: 'min(22vmin, 180px)', height: 'min(22vmin, 180px)', fontSize: 'min(13vmin, 110px)' }}>{tasted ? '🥵' : '🥄'}</button>
+              {tasted && <div className="text-[10vmin] animate-bounce">💨</div>}
             </div>
-            <div className="toy-pill px-2 py-2 flex gap-2">
-              {TOP.map((i) => tray(i, () => { resetIdle(); if (recipe.toppings.includes(i.id)) { if (!tops.includes(i.id)) { soundEngine.playGamePop(soundEnabled, 6); setTops((t) => [...t, i.id]); } } else oops(i.id); }, tops.includes(i.id)))}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {step === 'serve' && (
-          <FeedServe character={character} reaction={reaction} runKey={key} soundEnabled={soundEnabled} onRestart={restart}
-            dish={
-              <div className="relative" style={{ width: 'min(48vw, 26vh)', height: 'min(40vw, 22vh)' }}>
-                <img src={dishUrl} alt="" className="absolute inset-0 w-full h-full object-contain pointer-events-none" draggable={false} />
-                {tops.map((p, i) => <img key={p} src={ing(p)} alt="" draggable={false} className="absolute w-[34%] pointer-events-none" style={{ left: `${30 + i * 16}%`, top: `${22 + i * 8}%` }} />)}
-              </div>
-            } />
-        )}
-      </div>
-    </div>
+      {step === 'garnish' && bowl('min(66vmin, 580px)', centerRef)}
+
+      {step === 'serve' && (
+        <FeedServe character={character} reaction={reaction} runKey={key} soundEnabled={soundEnabled} onRestart={restart}
+          dish={bowl('min(36vmin, 300px)')} />
+      )}
+
+      <GestureHint show={showGesture} kind={hintKind} target={hintTarget} from={hintKind === 'drag' ? hintFromRef : undefined} itemSrc={hintItem} />
+    </CookScreen>
   );
 };

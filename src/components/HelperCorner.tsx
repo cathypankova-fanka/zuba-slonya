@@ -51,7 +51,7 @@ export const HelperCorner: React.FC = () => {
       type="button"
       aria-label="Помощник"
       onClick={() => { sayRandom('tap', 20, isVoiceEnabled()); }}
-      className="fixed z-30 right-2 bottom-2 sm:right-4 sm:bottom-4 w-[88px] h-[88px] sm:w-[124px] sm:h-[124px] select-none cursor-pointer p-0 rounded-full overflow-hidden bg-white border-4 border-white shadow-[0_6px_18px_rgba(0,0,0,0.28)] active:scale-95 transition-transform"
+      className="helper-corner fixed z-30 right-2 bottom-2 sm:right-4 sm:bottom-4 w-[88px] h-[88px] sm:w-[124px] sm:h-[124px] select-none cursor-pointer p-0 rounded-full overflow-hidden bg-white border-4 border-white shadow-[0_6px_18px_rgba(0,0,0,0.28)] active:scale-95 transition-transform"
       style={{ touchAction: 'manipulation' }}
     >
       <img src={url(clip)} alt="" draggable={false} className={`w-full h-full object-cover scale-110 ${busy ? '' : ''}`} />

@@ -6,8 +6,13 @@ import { pickReaction } from '../data/reactions';
 import { hasReactionAnim, reactionAnimUrl } from '../data/reactionAssets';
 import { soundEngine } from '../utils/soundEngine';
 import { playVoice, whenVoiceIdle } from '../utils/voice';
-import { IdleHandPointer, useIdleHint } from './MiniGameShell';
-import { FeedServe, GoalCard, StepBar } from './MissionKit';
+import { useIdleHint } from './MiniGameShell';
+import { FeedServe } from './MissionKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
+
+const svgUri = (body: string) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>${body}</svg>`);
+const EGG_SRC = svgUri(`<text x='50' y='80' font-size='76' text-anchor='middle'>🥚</text>`);
+const swatch = (hex: string) => svgUri(`<path d='M14 62c0-18 14-30 36-30s36 12 36 30c0 14-16 22-36 22S14 76 14 62z' fill='${hex}' stroke='rgba(0,0,0,.15)' stroke-width='3'/><path d='M50 10c10 10 22 16 22 30H28c0-14 12-20 22-30z' fill='${hex}' stroke='rgba(0,0,0,.15)' stroke-width='3'/><ellipse cx='36' cy='52' rx='8' ry='4' fill='#fff' opacity='.5'/>`);
 
 /**
  * Торт как «миссия» (картинки, без текста):
@@ -54,7 +59,7 @@ const STEPS = [
 ] as const;
 type StepId = (typeof STEPS)[number]['id'];
 
-const CAKE_W = 'min(66vw, 40vh)';
+const CAKE_W = 'min(64vmin, 560px)';
 const say = (id: string, on: boolean) => playVoice(id, on);
 const NEED_TOP = 6;
 const NEED_CANDLES = 3;
@@ -161,7 +166,7 @@ export const CakeMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   const [servedKey, setServedKey] = useState(0);
   const reaction = useMemo(() => pickReaction('cake', character.id), [servedKey, character.id]);
   const svgRef = useRef<SVGSVGElement>(null);
-  const bowlRef = useRef<HTMLDivElement>(null);
+  const bowlRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{ a: number; acc: number } | null>(null);
   const smearing = useRef(false);
   const lastAltAt = useRef(0);
@@ -174,16 +179,19 @@ export const CakeMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   };
   const [dragTop, setDragTop] = useState<{ id: CakeToppingId; x: number; y: number } | null>(null);
   const placeTopRef = useRef<(id: CakeToppingId, cx: number, cy: number) => void>(() => {});
-  const { showHint, resetIdle } = useIdleHint(7000, step !== 'serve' && step !== 'bake');
+  const { resetIdle } = useIdleHint(7000, step !== 'serve' && step !== 'bake');
 
+  const [doneFx, setDoneFx] = useState(false);
   const goNext = useCallback(
     (voice?: string) => {
       soundEngine.playGameOk(soundEnabled);
-      whenVoiceIdle(() => {
+      setDoneFx(true); // большая звезда: шаг выполнен
+      if (voice) window.setTimeout(() => say(voice, soundEnabled), 150);
+      window.setTimeout(() => whenVoiceIdle(() => {
+        setDoneFx(false);
         setStepIdx((i) => Math.min(i + 1, STEPS.length - 1));
         resetIdle();
-        if (voice) window.setTimeout(() => say(voice, soundEnabled), 250);
-      });
+      }), 900);
     },
     [soundEnabled, resetIdle],
   );
@@ -325,6 +333,16 @@ export const CakeMission: React.FC<{ character: CharacterItem; soundEnabled: boo
     setTops(n);
     if (n.length === NEED_TOP) window.setTimeout(() => goNext(), 450);
   };
+  const dropCandle = (cx: number, cy: number) => {
+    const el = svgRef.current;
+    if (!el || step !== 'candles' || candles.length >= NEED_CANDLES) return;
+    const r = el.getBoundingClientRect();
+    const c = clampTop(((cx - r.left) / r.width) * W, ((cy - r.top) / r.height) * H);
+    soundEngine.playGamePop(soundEnabled, 6 + candles.length);
+    const n = [...candles, { ...c, lit: false }];
+    setCandles(n);
+    if (n.length === NEED_CANDLES) window.setTimeout(() => goNext(), 450);
+  };
   const startDragTop = (id: CakeToppingId, e: React.PointerEvent) => {
     resetIdle();
     setSelTop(id);
@@ -372,146 +390,146 @@ export const CakeMission: React.FC<{ character: CharacterItem; soundEnabled: boo
     window.setTimeout(() => { setBlowing(false); goNext(); }, 2600);
   };
 
-  const goalImages =
-    step === 'top' ? recipe.toppings.map((t) => getCakeToppingAssetUrl(t))
-    : step === 'candles' || step === 'light' ? [getCakeCandleAssetUrl(recipe.candle)]
-    : [];
+  // ---------- подсказки-жесты ----------
+  const cakeRef = useRef<HTMLDivElement>(null);
+  const ovenRef = useRef<HTMLButtonElement>(null);
+  const blowRef = useRef<HTMLButtonElement>(null);
+  const plateEls = useRef<Record<string, HTMLButtonElement | null>>({});
+  const candleBtns = useRef<(HTMLButtonElement | null)[]>([]);
+  const hintFromRef = useRef<HTMLButtonElement | null>(null);
+  const tapTargetRef = useRef<Element | null>(null);
+  const showGesture = useStepHint(step, 2600, 7000, step !== 'serve' && step !== 'pick' && !doneFx && !blowing && oven !== 'baking');
+  const topShelf = useMemo(() => [...CAKE_TOPPINGS].sort(() => Math.random() - 0.5), [recipe]);
+  const nextTopId = recipe.toppings[tops.length % recipe.toppings.length];
+
+  let hintKind: HintKind = 'drag';
+  let hintTarget: React.RefObject<Element | null> = cakeRef;
+  let hintItem: string | undefined;
+  hintFromRef.current = null;
+  if (step === 'eggs') { hintTarget = bowlRef; hintItem = EGG_SRC; hintFromRef.current = plateEls.current[`egg${eggs}`] ?? null; }
+  else if (step === 'mix') { hintKind = 'circle'; hintTarget = bowlRef; }
+  else if (step === 'bake') { hintKind = 'tap'; hintTarget = ovenRef; }
+  else if (step === 'cream') hintKind = 'rub';
+  else if (step === 'top') { hintItem = getCakeToppingAssetUrl(nextTopId); hintFromRef.current = plateEls.current[nextTopId] ?? null; }
+  else if (step === 'candles') { hintItem = getCakeCandleAssetUrl(recipe.candle); hintFromRef.current = plateEls.current.__candle ?? null; }
+  else if (step === 'light') {
+    hintKind = 'tap';
+    tapTargetRef.current = candleBtns.current[candles.findIndex((c) => !c.lit)] ?? null;
+    hintTarget = tapTargetRef;
+  }
+  else if (step === 'blow') { hintKind = 'tap'; hintTarget = blowRef; }
+
+  const tray =
+    step === 'eggs' ? [0, 1, 2].map((i) => (
+      <Plate key={i} src={EGG_SRC} label="Яичко" plateRef={(el) => { plateEls.current[`egg${i}`] = el; }}
+        onPick={() => i >= eggs && crack()} target={bowlRef} onDrop={() => i >= eggs && crack()} dim={i < eggs} />
+    ))
+    : step === 'cream' ? CREAMS.map((c) => (
+      <Plate key={c.id} src={swatch(c.hex)} label={c.name} selected={creamId === c.id}
+        onPick={() => { setCreamId(c.id); if (c.id !== recipe.cream) sayAlt(); }} />
+    ))
+    : step === 'top' ? <LoopScroller>{topShelf.map((t) => (
+      <Plate key={t.id} src={getCakeToppingAssetUrl(t.id)} label={t.name} plateRef={(el) => { plateEls.current[t.id] = el; }}
+        selected={selTop === t.id} onPick={() => { resetIdle(); setSelTop(t.id); }}
+        target={cakeRef} onDrop={(x, y) => { setSelTop(t.id); placeTopRef.current(t.id, x, y); }} />
+    ))}</LoopScroller>
+    : step === 'candles' ? <Plate src={getCakeCandleAssetUrl(recipe.candle)} label="Свечка" plateRef={(el) => { plateEls.current.__candle = el; }}
+        target={cakeRef} onDrop={dropCandle} badge={NEED_CANDLES - candles.length} />
+    : undefined;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center gap-2 p-2 sm:p-3 select-none overflow-hidden">
-      <StepBar icons={STEPS.map((s) => s.icon)} idx={stepIdx} />
-
-      {step !== 'pick' && step !== 'serve' && (
-        <GoalCard
-          dishNode={<img src={getCakeBaseAssetUrl(recipe.cake)} alt="" className="w-[116px] h-[104px] object-contain drop-shadow" />}
-          images={goalImages}
-        />
+    <CookScreen stepKey={step} stepIdx={stepIdx} total={STEPS.length} done={doneFx} trayLoop={step === 'top'}
+      recipe={step !== 'pick' && step !== 'serve' ? <img src={getCakeBaseAssetUrl(recipe.cake)} alt="" className="w-[86%] h-[86%] object-contain" /> : undefined}
+      tray={tray}>
+      {step === 'pick' && (
+        <div className="flex gap-[3vmin] flex-wrap justify-center">
+          {RECIPES.map((r) => (
+            <button key={r.id} type="button" aria-label={r.title}
+              onClick={() => { setRecipe(r); setCreamId(r.cream); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
+              className="rounded-full bg-white/90 shadow-xl p-[2vmin] flex items-center justify-center active:scale-95 transition-transform">
+              <img src={getCakeBaseAssetUrl(r.cake)} alt="" draggable={false} style={{ width: 'min(26vmin, 230px)', height: 'min(26vmin, 230px)' }} className="object-contain" />
+            </button>
+          ))}
+        </div>
       )}
 
-      <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center gap-3 relative">
-        {step === 'pick' && (
-          <div className="grid grid-cols-3 gap-3 sm:gap-5 p-2">
-            {RECIPES.map((r) => (
-              <button key={r.id} type="button" aria-label={r.title}
-                onClick={() => { setRecipe(r); setCreamId(r.cream); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
-                className="toy-pill rounded-3xl p-3 flex items-center justify-center active:scale-95 transition-transform bg-white/90">
-                <img src={getCakeBaseAssetUrl(r.cake)} alt="" draggable={false} style={{ width: 'min(26vw, 160px)' }} className="object-contain" />
-              </button>
+      {step === 'eggs' && (
+        <div ref={bowlRef} className="rounded-b-[50%] bg-gradient-to-b from-[#E2E8F0] to-[#94A3B8] shadow-2xl relative overflow-hidden flex items-end justify-center border-t-[10px] border-[#F1F5F9]"
+          style={{ width: 'min(64vmin, 560px)', height: 'min(40vmin, 350px)' }}>
+          <div className="w-full bg-[#FDE68A] transition-all duration-500 relative" style={{ height: `${eggs * 26}%` }}>
+            {[...Array(eggs)].map((_, k) => <span key={k} className="absolute w-[14%] aspect-square rounded-full bg-[#F59E0B] animate-pop-in" style={{ left: `${24 + k * 20}%`, top: '18%' }} />)}
+          </div>
+        </div>
+      )}
+
+      {step === 'mix' && (
+        <div ref={bowlRef} onPointerDown={bowlDown} onPointerMove={bowlMove} onPointerUp={() => (drag.current = null)} onPointerCancel={() => (drag.current = null)}
+          style={{ touchAction: 'none' }} className="relative cursor-pointer flex flex-col items-center">
+          <div className="rounded-full bg-gradient-to-b from-[#E2E8F0] to-[#94A3B8] shadow-2xl flex items-center justify-center" style={{ width: 'min(62vmin, 540px)', height: 'min(62vmin, 540px)' }}>
+            <div className="w-[82%] h-[82%] rounded-full shadow-inner flex items-center justify-center" style={{ background: `repeating-conic-gradient(from ${turns * 40}deg, ${recipe.sponge} 0 20deg, #FFF3C4 20deg 40deg)`, transform: `rotate(${turns * 90}deg)`, transition: 'transform .4s' }}>
+              <span style={{ fontSize: 'min(16vmin, 140px)' }}>🥄</span>
+            </div>
+          </div>
+          <div className="flex justify-center gap-2 mt-3">
+            {[0, 1, 2, 3].map((i) => <span key={i} className={`w-5 h-5 rounded-full border-[3px] border-white ${i < turns ? 'bg-[#10C97A]' : 'bg-white/70'}`} />)}
+          </div>
+        </div>
+      )}
+
+      {step === 'bake' && (
+        <button ref={ovenRef} type="button" aria-label="Духовка" onClick={bakeTap}
+          className="relative rounded-[3rem] bg-gradient-to-b from-[#64748B] to-[#334155] shadow-2xl p-[2.5vmin] active:scale-95 transition-transform"
+          style={{ width: 'min(86vmin, 720px)', height: 'min(60vmin, 500px)' }}>
+          <div className="w-full h-full rounded-[2rem] bg-[#1E293B] overflow-hidden relative flex items-center justify-center"
+            style={{ boxShadow: oven === 'baking' ? 'inset 0 0 90px #FB923C' : 'inset 0 0 20px #000' }}>
+            <div className="w-[50%] transition-all duration-700" style={{ opacity: oven === 'idle' ? 0.25 : 1, filter: oven === 'baking' ? 'brightness(.75)' : 'none' }}>
+              <CakeSvg sponge={recipe.sponge} candleId={recipe.candle} />
+            </div>
+          </div>
+          <div className="absolute -top-[7vmin] left-1/2 -translate-x-1/2 text-[9vmin]">{oven === 'idle' ? '🔥' : oven === 'baking' ? '⏳' : '🔔'}</div>
+        </button>
+      )}
+
+      {(step === 'cream' || step === 'top' || step === 'candles' || step === 'light' || step === 'blow') && (
+        <div className="flex items-center gap-[4vmin]">
+          <div ref={cakeRef} className="relative" style={{ width: step === 'blow' ? 'min(54vmin, 480px)' : CAKE_W }}>
+            <div onPointerDown={cakeDown} onPointerMove={cakeMove} onPointerUp={cakeUp} onPointerCancel={cakeUp} className="cursor-pointer" style={{ touchAction: 'none' }}>
+              <CakeSvg innerRef={svgRef} sponge={recipe.sponge} blobs={blobs} tops={tops} candles={candles} candleId={recipe.candle} />
+            </div>
+            {step === 'light' && candles.map((c, i) => !c.lit && (
+              <button key={i} ref={(el) => { candleBtns.current[i] = el; }} type="button" aria-label="Свечка" onClick={() => light(i)}
+                className="absolute w-[13%] aspect-square rounded-full bg-white/70 animate-pulse text-[4vmin] flex items-center justify-center"
+                style={{ left: `${(c.x / W) * 100}%`, top: `${((c.y - 112) / H) * 100}%`, transform: 'translate(-50%,-50%)' }}>🔥</button>
             ))}
+            {smoke && <div className="absolute left-0 right-0 top-[5%] text-center text-[12vmin] animate-bounce pointer-events-none">💨</div>}
           </div>
-        )}
-
-        {step === 'eggs' && (
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex gap-3">
-              {[0, 1, 2].map((i) => (
-                <button key={i} type="button" aria-label="Яичко" onClick={crack} disabled={i < eggs}
-                  className={`text-6xl sm:text-7xl transition-all ${i < eggs ? 'opacity-30 scale-75 grayscale' : 'active:scale-90 animate-bounce'}`}>
-                  {i < eggs ? '🍳' : '🥚'}
-                </button>
-              ))}
+          {step === 'blow' && (
+            <div className="flex flex-col items-center gap-3">
+              <div className="rounded-full overflow-hidden border-[6px] border-white shadow-xl" style={{ width: 'min(30vmin, 260px)', height: 'min(30vmin, 260px)', background: character.accentBg }}>
+                {blowing && hasReactionAnim(character.id, 'blow') ? (
+                  <img src={`${reactionAnimUrl(character.id, 'blow')}?r=${servedKey}`} alt="" draggable={false} className="w-full h-full object-cover" />
+                ) : (
+                  <img src={character.imageSrc} alt="" draggable={false} className={`w-full h-full object-cover object-top ${blowing ? 'scale-110 transition-transform' : ''}`} />
+                )}
+              </div>
+              <button ref={blowRef} type="button" aria-label="Задуть" onClick={blow}
+                className="rounded-full bg-white shadow-xl flex items-center justify-center active:scale-90 transition-transform animate-bounce"
+                style={{ width: 'min(16vmin, 130px)', height: 'min(16vmin, 130px)', fontSize: 'min(10vmin, 84px)' }}>💨</button>
             </div>
-            <div className="w-[56vw] max-w-[300px] aspect-[3/2] rounded-b-[50%] bg-gradient-to-b from-[#E2E8F0] to-[#94A3B8] shadow-xl relative overflow-hidden flex items-end justify-center">
-              <div className="w-full bg-[#FDE68A] transition-all duration-500" style={{ height: `${eggs * 28}%` }} />
-            </div>
-          </div>
-        )}
-
-        {step === 'mix' && (
-          <div ref={bowlRef} onPointerDown={bowlDown} onPointerMove={bowlMove} onPointerUp={() => (drag.current = null)} onPointerCancel={() => (drag.current = null)}
-            style={{ touchAction: 'none' }} className="relative cursor-pointer">
-            <div className="w-[62vw] max-w-[340px] aspect-square rounded-full bg-gradient-to-b from-[#E2E8F0] to-[#94A3B8] shadow-xl flex items-center justify-center">
-              <div className="w-[82%] h-[82%] rounded-full shadow-inner flex items-center justify-center" style={{ background: recipe.sponge, transform: `rotate(${turns * 90}deg)`, transition: 'transform .4s' }}>
-                <span className="text-6xl">🥄</span>
-              </div>
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-6xl opacity-50">🔄</div>
-            <div className="flex justify-center gap-2 mt-3">
-              {[0, 1, 2, 3].map((i) => <span key={i} className={`w-4 h-4 rounded-full ${i < turns ? 'bg-[#10C97A]' : 'bg-[#CBD5E1]'}`} />)}
-            </div>
-            {showHint && <IdleHandPointer className="absolute left-[44%] top-[30%]" />}
-          </div>
-        )}
-
-        {step === 'bake' && (
-          <button type="button" aria-label="Духовка" onClick={bakeTap}
-            className="relative rounded-[2rem] bg-gradient-to-b from-[#64748B] to-[#334155] shadow-xl p-4 active:scale-95 transition-transform"
-            style={{ width: 'min(70vw, 340px)', height: 'min(50vw, 250px)' }}>
-            <div className="w-full h-full rounded-2xl bg-[#1E293B] overflow-hidden relative flex items-center justify-center"
-              style={{ boxShadow: oven === 'baking' ? 'inset 0 0 60px #FB923C' : 'inset 0 0 20px #000' }}>
-              <div className="w-[62%] transition-all duration-700" style={{ opacity: oven === 'idle' ? 0 : 1, filter: oven === 'baking' ? 'brightness(.75)' : 'none' }}>
-                <CakeSvg sponge={recipe.sponge} candleId={recipe.candle} />
-              </div>
-            </div>
-            <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-4xl">{oven === 'idle' ? '👆🔥' : oven === 'baking' ? '⏳' : '🔔'}</div>
-          </button>
-        )}
-
-        {(step === 'cream' || step === 'top' || step === 'candles' || step === 'light' || step === 'blow') && (
-          <div className="relative flex flex-col items-center gap-3">
-            <div className="relative" style={{ width: CAKE_W }}>
-              <div onPointerDown={cakeDown} onPointerMove={cakeMove} onPointerUp={cakeUp} onPointerCancel={cakeUp} className="cursor-pointer" style={{ touchAction: 'none' }}>
-                <CakeSvg innerRef={svgRef} sponge={recipe.sponge} blobs={blobs} tops={tops} candles={candles} candleId={recipe.candle} />
-              </div>
-              {step === 'light' && candles.map((c, i) => !c.lit && (
-                <button key={i} type="button" aria-label="Свечка" onClick={() => light(i)} className="absolute w-[13%] aspect-square rounded-full bg-white/60 animate-pulse text-xl"
-                  style={{ left: `${(c.x / W) * 100}%`, top: `${((c.y - 112) / H) * 100}%`, transform: 'translate(-50%,-50%)' }}>🔥</button>
-              ))}
-              {smoke && <div className="absolute left-0 right-0 top-[5%] text-center text-6xl animate-bounce pointer-events-none">💨</div>}
-              {step === 'cream' && blobs.length === 0 && showHint && <IdleHandPointer className="absolute left-[44%] top-[30%]" />}
-            </div>
-
-            {step === 'cream' && (
-              <div className="toy-pill px-2 py-2 flex gap-2">
-                {CREAMS.map((c) => (
-                  <button key={c.id} type="button" aria-label={c.name} onClick={() => { setCreamId(c.id); if (c.id !== recipe.cream) sayAlt(); }}
-                    className={`w-11 h-11 sm:w-14 sm:h-14 rounded-full border-4 border-white shadow ${creamId === c.id ? 'ring-4 ring-[#FFB800] scale-110' : ''}`}
-                    style={{ background: c.hex }} />
-                ))}
-              </div>
-            )}
-
-            {step === 'top' && (
-              <div className="toy-pill px-2 py-2 flex gap-1.5 flex-wrap justify-center" style={{ maxWidth: 'min(92vw, 520px)' }}>
-                {CAKE_TOPPINGS.map((t) => (
-                  <button key={t.id} type="button" aria-label={t.name} onPointerDown={(e) => startDragTop(t.id, e)}
-                    style={{ touchAction: 'none' }}
-                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white flex items-center justify-center cursor-grab ${selTop === t.id ? 'ring-4 ring-[#FFB800] scale-110' : ''}`}>
-                    <img src={getCakeToppingAssetUrl(t.id)} alt="" className="w-[80%] h-[80%] object-contain" />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {step === 'blow' && (
-              <div className="flex items-center gap-4">
-                <div className="rounded-full overflow-hidden border-4 border-white shadow-xl" style={{ width: 'min(30vw, 18vh)', height: 'min(30vw, 18vh)', background: character.accentBg }}>
-                  {blowing && hasReactionAnim(character.id, 'blow') ? (
-                    <img src={`${reactionAnimUrl(character.id, 'blow')}?r=${servedKey}`} alt="" draggable={false} className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={character.imageSrc} alt="" draggable={false} className={`w-full h-full object-cover object-top ${blowing ? 'scale-110 transition-transform' : ''}`} />
-                  )}
-                </div>
-                <button type="button" aria-label="Задуть" onClick={blow} className="toy-pill px-6 py-3 text-5xl active:scale-90 transition-transform animate-bounce">💨</button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {step === 'serve' && (
-          <FeedServe character={character} reaction={reaction} runKey={servedKey} soundEnabled={soundEnabled} onRestart={restart}
-            dish={
-              <div style={{ width: 'min(46vw, 28vh)' }}>
-                <CakeSvg sponge={recipe.sponge} blobs={blobs} tops={tops} candles={candles.map((c) => ({ ...c, lit: false }))} candleId={recipe.candle} />
-              </div>
-            } />
-        )}
-      </div>
-      {dragTop && (
-        <img src={getCakeToppingAssetUrl(dragTop.id)} alt="" draggable={false}
-          className="fixed z-50 w-16 h-16 object-contain pointer-events-none drop-shadow-xl"
-          style={{ left: dragTop.x, top: dragTop.y, transform: 'translate(-50%,-70%) scale(1.15)' }} />
+          )}
+        </div>
       )}
-    </div>
+
+      {step === 'serve' && (
+        <FeedServe character={character} reaction={reaction} runKey={servedKey} soundEnabled={soundEnabled} onRestart={restart}
+          dish={
+            <div style={{ width: 'min(36vmin, 300px)' }}>
+              <CakeSvg sponge={recipe.sponge} blobs={blobs} tops={tops} candles={candles.map((c) => ({ ...c, lit: false }))} candleId={recipe.candle} />
+            </div>
+          } />
+      )}
+
+      <GestureHint show={showGesture} kind={hintKind} target={hintTarget} from={hintKind === 'drag' ? hintFromRef : undefined} itemSrc={hintItem} />
+    </CookScreen>
   );
 };

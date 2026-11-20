@@ -1555,7 +1555,7 @@ export default function App() {
     >
       {/* Верхняя полоска: только иконки (домик и звук), без заголовков и текста */}
       {screen === 'play' ? (
-        <header className="flex items-center justify-between gap-2 px-3 sm:px-5 py-2 shrink-0">
+        <header className="relative z-40 flex items-center justify-between gap-2 px-3 sm:px-5 py-2 shrink-0">
           <button
             type="button"
             onClick={handleReturnToMenu}
