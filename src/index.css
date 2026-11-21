@@ -379,3 +379,10 @@ body[data-cook='1'] .helper-corner {
   .rotate-hint > span { font-size: 34vh; animation: rotate-phone 2.4s ease-in-out infinite; }
 }
 @keyframes rotate-phone { 0%, 20% { transform: rotate(-90deg); } 55%, 100% { transform: rotate(0deg); } }
+
+/* Паста и дождик */
+@keyframes rain-fall { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(420%); opacity: 0; } }
+@keyframes rain-drop { 0% { transform: translateY(-10vh); } 100% { transform: translateY(110vh); } }
+@keyframes rain-jump { 0% { transform: translateY(0) scale(1, 1); } 15% { transform: translateY(0) scale(1.1, 0.88); } 50% { transform: translateY(-55%) scale(0.95, 1.06); } 85% { transform: translateY(0) scale(1.12, 0.86); } 100% { transform: translateY(0) scale(1, 1); } }
+@keyframes splash-fly { 0% { transform: translate(-50%, -50%) translate(0, 0) scale(0.6); opacity: 1; } 100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1); opacity: 0; } }
+@keyframes ripple { 0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.9; } 100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; } }

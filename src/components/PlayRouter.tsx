@@ -21,6 +21,8 @@ import { ShopMission } from './ShopMission';
 import { MusicGame } from './MusicGame';
 import { HouseMission } from './HouseMission';
 import { BirthdayMission } from './BirthdayMission';
+import { PastaMission } from './PastaMission';
+import { RainMission } from './RainMission';
 import { FriendVisit } from './PlayKit';
 
 /** Старые режимы, переделанные в пошаговые миссии. */
@@ -47,6 +49,8 @@ export const PlayRouter: React.FC<{ mode: PlayMode | string; character: Characte
     case 'music': return <MusicGame {...p} />;
     case 'house': return <HouseMission {...p} />;
     case 'birthday': return <BirthdayMission {...p} />;
+    case 'pasta': return <PastaMission {...p} />;
+    case 'rain': return <RainMission {...p} />;
     case 'shadow': return <ShopMission {...p} />;
     case 'face': return <FaceMission {...p} />;
     case 'tshirt': return <TShirtMission {...p} />;
