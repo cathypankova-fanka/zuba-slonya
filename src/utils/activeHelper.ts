@@ -1,4 +1,5 @@
-/** Помощник (Зуба или Слоня) выбирается случайно один раз при открытии всей игры */
+/** Помощник (Зуба или Слоня) выбирается на заставке нажатием на героя и остаётся на всю игру. */
 export type HelperId = 'zuba' | 'slonya';
-const activeHelper: HelperId = Math.random() < 0.5 ? 'zuba' : 'slonya';
+let activeHelper: HelperId = 'zuba';
 export const getActiveHelper = (): HelperId => activeHelper;
+export const setActiveHelper = (h: HelperId) => { activeHelper = h; };
