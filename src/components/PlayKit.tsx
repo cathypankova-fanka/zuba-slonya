@@ -129,11 +129,15 @@ export function useReveal(src: string, active: boolean, opts: { radius?: number;
     im.src = src;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, active]);
-  const reveal = (p: { x: number; y: number }) => {
+  /** tint — перекрасить узор под пальцем в этот цвет (форма и тени узора сохраняются). */
+  const reveal = (p: { x: number; y: number }, tint?: string) => {
     const c = canvasRef.current, im = img.current; if (!c || !im) return 0;
     const ctx = c.getContext('2d')!;
     ctx.save(); ctx.beginPath(); ctx.arc(p.x * c.width, p.y * c.height, R * c.width, 0, Math.PI * 2); ctx.clip();
-    ctx.drawImage(im, 0, 0, c.width, c.height); ctx.restore();
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.drawImage(im, 0, 0, c.width, c.height);
+    if (tint) { ctx.globalCompositeOperation = 'source-atop'; ctx.globalAlpha = 0.62; ctx.fillStyle = tint; ctx.fillRect(0, 0, c.width, c.height); }
+    ctx.restore();
     const g = grid.current, asp = c.height / c.width;
     g.cells.forEach(([cx, cy], i) => { if (!g.hit.has(i) && Math.hypot(cx - p.x, (cy - p.y) * asp) < R) g.hit.add(i); });
     const v = g.cells.length ? g.hit.size / g.cells.length : 0;
