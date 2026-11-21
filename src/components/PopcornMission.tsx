@@ -10,7 +10,7 @@ import { P, Stove, useRub, useSteps } from './PlayKit';
 
 const STEPS = ['kernels', 'fire', 'pop', 'shake', 'serve'] as const;
 const VOICES = { kernels: 'pp_kernels', fire: 'pp_fire', pop: 'pp_pop', shake: 'pp_shake' };
-const NEED = 10;
+const NEED = 6;
 
 interface Fly { id: number; x0: number; vx: number; vy: number; t0: number; caught?: boolean }
 
@@ -42,14 +42,19 @@ export const PopcornMission: React.FC<{ character: CharacterItem; soundEnabled: 
     if (step !== 'pop' || doneFx) return;
     const iv = window.setInterval(() => {
       soundEngine.playGamePop(soundEnabled, 6 + Math.floor(Math.random() * 4));
-      setFlies((f) => [...f.filter((q) => performance.now() - q.t0 < 2600 && !q.caught).slice(-10), {
-        id: idc.current++, x0: 0.45 + Math.random() * 0.1, vx: (Math.random() - 0.5) * 0.5, vy: 1.15 + Math.random() * 0.35, t0: performance.now(),
-      }]);
-    }, 650);
+      const now = performance.now();
+      const burst = Math.random() < 0.4 ? 2 : 1;
+      setFlies((f) => [...f.filter((q) => now - q.t0 < 2600 && !q.caught).slice(-8),
+        ...Array.from({ length: burst }, () => ({
+          id: idc.current++, x0: 0.42 + Math.random() * 0.16, vx: (Math.random() - 0.5) * 0.6, vy: 1.15 + Math.random() * 0.35, t0: now,
+        }))]);
+    }, 420);
+    // если не получается поймать — через 9 секунд ведёрко всё равно наполнится
+    const giveUp = window.setTimeout(() => setCaught((c) => { if (c < NEED) window.setTimeout(() => next(), 300); return NEED; }), 9000);
     let raf = 0;
     const f = () => { setTick((t) => t + 1); raf = requestAnimationFrame(f); };
     raf = requestAnimationFrame(f);
-    return () => { window.clearInterval(iv); cancelAnimationFrame(raf); };
+    return () => { window.clearInterval(iv); window.clearTimeout(giveUp); cancelAnimationFrame(raf); };
   }, [step, doneFx, soundEnabled]);
 
   const flyPos = (q: Fly) => {
@@ -60,6 +65,7 @@ export const PopcornMission: React.FC<{ character: CharacterItem; soundEnabled: 
     setFlies((f) => f.map((q) => (q.id === id ? { ...q, caught: true } : q)));
     soundEngine.playGameOk(soundEnabled);
     setCaught((c) => {
+      if (c >= NEED) return c;
       const n = c + 1;
       if (n === NEED) window.setTimeout(() => next(), 400);
       return n;
@@ -93,7 +99,7 @@ export const PopcornMission: React.FC<{ character: CharacterItem; soundEnabled: 
   const STOVE = 'min(60vmin, 520px)';
   const bucket = (w: string, ref?: React.Ref<HTMLDivElement>) => (
     <div ref={ref} className="relative" style={{ width: w, height: `calc(${w} * 1.02)` }}>
-      <img src={P('popcorn_bucket')} alt="" draggable={false} className="absolute inset-0 w-full h-full object-contain pointer-events-none" style={{ clipPath: caught < NEED && step === 'pop' ? `inset(${Math.max(0, 30 - caught * 3)}% 0 0 0)` : undefined }} />
+      <img src={P('popcorn_bucket')} alt="" draggable={false} className="absolute inset-0 w-full h-full object-contain pointer-events-none" style={{ clipPath: caught < NEED && step === 'pop' ? `inset(${Math.max(0, 30 - caught * 5)}% 0 0 0)` : undefined }} />
       {sugar > 0 && Array.from({ length: Math.floor(sugar * 30) }).map((_, i) => (
         <span key={i} className="absolute w-[3%] h-[3%] rounded-sm bg-white pointer-events-none" style={{ left: `${15 + (i * 37) % 70}%`, top: `${4 + (i * 13) % 22}%`, boxShadow: '0 0 2px #ccc' }} />
       ))}
@@ -129,7 +135,7 @@ export const PopcornMission: React.FC<{ character: CharacterItem; soundEnabled: 
             if (p.y > 1.1) return null;
             return (
               <button key={q.id} type="button" aria-label="Попкорн" onPointerDown={() => catchIt(q.id)}
-                className="absolute w-[min(12vmin,100px)] h-[min(12vmin,100px)] -translate-x-1/2 -translate-y-1/2"
+                className="absolute w-[min(15vmin,110px)] h-[min(15vmin,110px)] -translate-x-1/2 -translate-y-1/2"
                 style={{ left: `calc(${STOVE} * ${p.x})`, top: `calc(${STOVE} * ${p.y} * 0.8)` }}>
                 <img src={P('popcorn')} alt="" draggable={false} className="w-full h-full object-contain pointer-events-none" style={{ transform: `rotate(${q.id * 70 + (performance.now() - q.t0) / 4}deg)` }} />
               </button>

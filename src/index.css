@@ -345,6 +345,19 @@ body[data-cook='1'] .helper-corner {
   .cook-tray:not(:empty) {
     padding-left: 10px !important;
     padding-right: 10px !important;
+    /* снизу — жест «домой» телефона: поднимаем тарелочки, чтобы не закрывать приложение */
+    padding-bottom: max(11vh, calc(env(safe-area-inset-bottom) + 64px)) !important;
+  }
+}
+/* сенсорные экраны: нижняя полоска — системный жест, держим предметы подальше от края */
+@media (pointer: coarse) {
+  .cook-tray:not(:empty) {
+    padding-bottom: max(5vh, calc(env(safe-area-inset-bottom) + 36px));
+  }
+}
+@media (pointer: coarse) and (min-width: 641px) {
+  body[data-cook='1'] .helper-corner {
+    bottom: calc(min(13.5vmin, 120px) + 44px + max(5vh, 36px)) !important;
   }
 }
 
