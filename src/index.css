@@ -392,3 +392,6 @@ body[data-cook='1'] .helper-corner {
 @keyframes stream { 0% { transform: scaleY(0); transform-origin: top; opacity: 1; } 20% { transform: scaleY(1); opacity: 1; } 80% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(0.2); opacity: 0; } }
 @keyframes drip { 0% { transform: translateY(0) scaleY(0.6); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(260%) scaleY(1.1); opacity: 0; } }
 @keyframes sauce-spread { 0% { transform: scale(0.15); opacity: 0.4; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+
+/* бургер: котлетка подлетает и переворачивается */
+@keyframes pp-flip { 0% { transform: translateY(0) rotateX(0); } 50% { transform: translateY(-80%) rotateX(180deg); } 100% { transform: translateY(0) rotateX(360deg); } }

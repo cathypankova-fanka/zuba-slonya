@@ -63,6 +63,7 @@ export const MAP_MARKERS: MapMarker[] = [
   { mode: 'birthday', img: 'birthday', aria: 'День рождения', x: 4650, y: 700 },
   { mode: 'pasta', img: 'pasta', aria: 'Паста', x: 5150, y: 2450 },
   { mode: 'rain', img: 'rain', aria: 'Дождик и лужи', x: 8000, y: 3400 },
+  { mode: 'burger', img: 'burger', aria: 'Бургер и картошка', x: 6650, y: 2350 },
 ];
 
 export interface MapDecor {
