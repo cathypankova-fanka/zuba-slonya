@@ -96,6 +96,59 @@ export function useRub(active: boolean, onRub: (amount: number, p: { x: number; 
   return bind;
 }
 
+/**
+ * «Проявить картинку пальчиком»: холст поверх коробки boxRef; reveal(p) рисует кусочек картинки под пальцем (p — 0..1 в коробке).
+ * Возвращает долю закрашенной картинки (по непрозрачным местам). active — пока шаг идёт.
+ */
+export function useReveal(src: string, active: boolean, opts: { radius?: number; fallback?: string } = {}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const img = useRef<HTMLImageElement | null>(null);
+  const grid = useRef<{ cells: [number, number][]; hit: Set<number> }>({ cells: [], hit: new Set() });
+  const [pct, setPct] = useState(0);
+  const R = opts.radius ?? 0.13;
+  useEffect(() => {
+    if (!active) return;
+    grid.current = { cells: [], hit: new Set() };
+    setPct(0);
+    const im = new Image();
+    im.onerror = () => { if (opts.fallback && !im.dataset.fb) { im.dataset.fb = '1'; im.src = opts.fallback; } };
+    im.onload = () => {
+      img.current = im;
+      const c = canvasRef.current, box = boxRef.current; if (!c || !box) return;
+      const r = box.getBoundingClientRect();
+      c.width = Math.max(10, Math.round(r.width * 2)); c.height = Math.max(10, Math.round(r.height * 2));
+      c.getContext('2d')!.clearRect(0, 0, c.width, c.height);
+      const off = document.createElement('canvas'); off.width = 48; off.height = Math.max(4, Math.round(48 * c.height / c.width));
+      const o = off.getContext('2d')!; o.drawImage(im, 0, 0, off.width, off.height);
+      const d = o.getImageData(0, 0, off.width, off.height).data;
+      const cells: [number, number][] = [];
+      for (let y = 1; y < off.height; y += 2) for (let x = 1; x < off.width; x += 2) if (d[(y * off.width + x) * 4 + 3] > 60) cells.push([x / off.width, y / off.height]);
+      grid.current.cells = cells;
+    };
+    im.src = src;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, active]);
+  const reveal = (p: { x: number; y: number }) => {
+    const c = canvasRef.current, im = img.current; if (!c || !im) return 0;
+    const ctx = c.getContext('2d')!;
+    ctx.save(); ctx.beginPath(); ctx.arc(p.x * c.width, p.y * c.height, R * c.width, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(im, 0, 0, c.width, c.height); ctx.restore();
+    const g = grid.current, asp = c.height / c.width;
+    g.cells.forEach(([cx, cy], i) => { if (!g.hit.has(i) && Math.hypot(cx - p.x, (cy - p.y) * asp) < R) g.hit.add(i); });
+    const v = g.cells.length ? g.hit.size / g.cells.length : 0;
+    setPct(v);
+    return v;
+  };
+  const fill = () => { const c = canvasRef.current, im = img.current; if (c && im) c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height); setPct(1); };
+  /** точка события в долях коробки */
+  const at = (e: { clientX: number; clientY: number }) => {
+    const r = boxRef.current!.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+  };
+  return { canvasRef, boxRef, reveal, fill, at, pct };
+}
+
 /** Лицо героя с эмоцией (sad, joy, sleepy…), круглое. */
 export const HeroFace: React.FC<{ hero: CharacterItem; emotion?: string; size: string; className?: string; children?: React.ReactNode }> = ({ hero, emotion, size, className = '', children }) => (
   <div className={`relative rounded-full overflow-hidden border-[6px] border-white shadow-2xl ${className}`} style={{ width: size, height: size, background: hero.accentBg }}>

@@ -24,7 +24,7 @@ import { IceCreamMission } from './components/IceCreamMission';
 import { SoupMission } from './components/SoupMission';
 import { SandwichMission } from './components/SandwichMission';
 import { DrinksMission } from './components/DrinksMission';
-import { PlayRouter } from './components/PlayRouter';
+import { PlayRouter, REMADE_MODES } from './components/PlayRouter';
 import { PLAY_MODES, PlayMode } from './data/kitchenData';
 import { CakeMission } from './components/CakeMission';
 import { playVoice, setVoiceEnabled } from './utils/voice';
@@ -1602,9 +1602,9 @@ export default function App() {
           voiceEnabled={soundEnabled}
           onTap={(pitch = 2) => soundEngine.playTapPop(soundEnabled, pitch)}
         />
-      ) : (PLAY_MODES as string[]).includes(gameMode) ? (
+      ) : (PLAY_MODES as string[]).includes(gameMode) || REMADE_MODES.includes(gameMode) ? (
         <main className="flex-1 min-h-0">
-          <PlayRouter mode={gameMode as PlayMode} character={activeCharacter} soundEnabled={soundEnabled} />
+          <PlayRouter mode={gameMode} character={activeCharacter} soundEnabled={soundEnabled} />
         </main>
       ) : gameMode === 'feed' ||
         gameMode === 'shadow' ||

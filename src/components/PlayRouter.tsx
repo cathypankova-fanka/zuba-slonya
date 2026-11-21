@@ -14,9 +14,15 @@ import { LaundryMission } from './LaundryMission';
 import { PopitGame } from './PopitGame';
 import { PhoneGame } from './PhoneGame';
 import { TraceGame } from './TraceGame';
+import { FaceMission } from './FaceMission';
+import { TShirtMission } from './TShirtMission';
+import { BathMission } from './BathMission';
+
+/** Старые режимы, переделанные в пошаговые миссии. */
+export const REMADE_MODES: string[] = ['face', 'tshirt', 'wash'];
 
 /** Маршрутизатор новых мини-игр. */
-export const PlayRouter: React.FC<{ mode: PlayMode; character: CharacterItem; soundEnabled: boolean }> = ({ mode, character, soundEnabled }) => {
+export const PlayRouter: React.FC<{ mode: PlayMode | string; character: CharacterItem; soundEnabled: boolean }> = ({ mode, character, soundEnabled }) => {
   const p = { character, soundEnabled };
   switch (mode) {
     case 'milkshake': return <MilkshakeMission {...p} />;
@@ -33,6 +39,9 @@ export const PlayRouter: React.FC<{ mode: PlayMode; character: CharacterItem; so
     case 'phone': return <PhoneGame {...p} />;
     case 'numbers': return <TraceGame key="n" kind="numbers" soundEnabled={soundEnabled} />;
     case 'letters': return <TraceGame key="l" kind="letters" soundEnabled={soundEnabled} />;
+    case 'face': return <FaceMission {...p} />;
+    case 'tshirt': return <TShirtMission {...p} />;
+    case 'wash': return <BathMission {...p} />;
     default: return null;
   }
 };
