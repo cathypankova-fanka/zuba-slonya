@@ -43,7 +43,7 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
   const [recipe, setRecipe] = useState<Recipe>(RECIPES[0]);
   const steps = useMemo<StepId[]>(() => ['pick', 'glass', 'pour', isHot(recipe.category) ? 'stir' : 'ice', 'top', 'serve'], [recipe]);
   const [idx, setIdx] = useState(0);
-  const step = steps[idx];
+  const step = steps[Math.min(idx, steps.length - 1)];
   const [vessel, setVessel] = useState<Vessel | null>(null);
   const [bottle, setBottle] = useState<string | null>(null);
   const [level, setLevel] = useState(0);
@@ -58,15 +58,20 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
   const lastAlt = useRef(0);
   const stir = useRef<{ a: number; acc: number } | null>(null);
 
+  const busy = useRef(false);
   const next = useCallback((v?: string) => {
+    // повторные нажатия, пока помощник договаривает, не должны перескакивать шаги
+    if (busy.current) return;
+    busy.current = true;
     soundEngine.playGameOk(soundEnabled);
     setDoneFx(true); // большая звезда: шаг выполнен
     if (v) window.setTimeout(() => say(v, soundEnabled), 150);
     window.setTimeout(() => whenVoiceIdle(() => {
       setDoneFx(false);
-      setIdx((i) => i + 1);
+      busy.current = false;
+      setIdx((i) => Math.min(i + 1, steps.length - 1));
     }), 900);
-  }, [soundEnabled]);
+  }, [soundEnabled, steps.length]);
 
   useEffect(() => {
     const m: Partial<Record<StepId, string>> = { pick: 'dr_pick', glass: 'dr_glass', pour: 'dr_pour', ice: 'dr_ice', stir: 'dr_stir', top: 'dr_top' };
@@ -76,7 +81,7 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  const restart = () => { setIdx(0); setVessel(null); setBottle(null); setLevel(0); setIce(0); setStirAngle(0); setStirTurns(0); setTops([]); };
+  const restart = () => { busy.current = false; setDoneFx(false); setIdx(0); setVessel(null); setBottle(null); setLevel(0); setIce(0); setStirAngle(0); setStirTurns(0); setTops([]); };
   const oops = (id: string) => { soundEngine.playGameFail(soundEnabled); setWrong(id); window.setTimeout(() => setWrong(null), 600); say('dr_wrong', soundEnabled); };
 
   // ---------- шаги ----------
@@ -190,7 +195,7 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
         <div className="grid grid-cols-3 gap-[2.5vmin]">
           {RECIPES.map((r) => (
             <button key={r.flavor} type="button" aria-label={flavorOf(r.flavor).name}
-              onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => next(), 250); }}
+              onClick={() => { if (busy.current || doneFx) return; setRecipe(r); next(); }}
               className="rounded-[2.5rem] bg-white/90 shadow-xl p-[1.5vmin] active:scale-95 transition-transform flex items-center justify-center">
               <img src={getDrinkRecipeAssetUrl(r.flavor) ?? ''} alt="" draggable={false} className="object-contain" style={{ width: 'min(22vmin, 190px)', height: 'min(22vmin, 190px)' }} />
             </button>
