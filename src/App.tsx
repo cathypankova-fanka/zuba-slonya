@@ -157,6 +157,10 @@ const MODE_TITLES: Record<AllGameMode, string> = {
   doctor: 'Доктор',
   garden: 'Садик',
   laundry: 'Стирка',
+  popit: 'Попит',
+  phone: 'Телефон',
+  numbers: 'Цифры',
+  letters: 'Буквы',
 };
 
 const KITCHEN_MODES = ['pizza', 'icecream', 'drinks', 'soup', 'sandwich', 'cake'];

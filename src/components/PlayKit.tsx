@@ -64,7 +64,7 @@ export function useHold(active: boolean, onTick: (dt: number) => void) {
     onPointerDown: (e: React.PointerEvent) => { if (!active) return; e.preventDefault(); setHolding(true); },
     style: { touchAction: 'none' as const },
   };
-  return { holding: holding && active, bind };
+  return { holding: holding && active, bind, stop: () => setHolding(false) };
 }
 
 /** «Потереть»: копит пройденный пальцем путь (в долях ширины элемента). onRub(доля, точка 0..1). */
@@ -145,8 +145,9 @@ export const Stove: React.FC<{ width: string; on?: boolean; burnerX?: number; ch
         left: `${burnerX}%`, top: '14%', width: '58%', height: '52%',
         borderColor: on ? '#F97316' : '#71717A',
         boxShadow: on ? '0 0 26px 8px rgba(249,115,22,.6), inset 0 0 18px rgba(249,115,22,.6)' : 'inset 0 0 0 10px #3F3F46', transition: 'all .5s' }} />
-      {knob}
     </div>
     <div className="relative z-10 w-full flex justify-center" style={{ paddingBottom: `calc(${width} * 0.12)` }}>{children}</div>
+    {/* ручка поверх посуды, чтобы её можно было нажать */}
+    {knob && <div className="absolute left-0 right-0 bottom-0 z-20 pointer-events-none [&>*]:pointer-events-auto" style={{ height: `calc(${width} * 0.36)` }}>{knob}</div>}
   </div>
 );

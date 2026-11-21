@@ -249,7 +249,7 @@ export const MapHub: React.FC<MapHubProps> = ({
         }}
       >
         <img
-          src="/assets/princess/bg/map.webp"
+          src="/assets/princess/bg/map_big.webp"
           alt=""
           draggable={false}
           className="absolute inset-0 w-full h-full pointer-events-none"

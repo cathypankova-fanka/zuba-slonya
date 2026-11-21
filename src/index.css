@@ -312,3 +312,13 @@ body[data-cook='1'] .helper-corner {
   0% { transform: rotateY(0deg); opacity: 1; }
   100% { transform: rotateY(-180deg); opacity: 0.2; }
 }
+
+@keyframes popburst {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+}
+
+@keyframes eggdrop {
+  0% { transform: translate(0, 0); opacity: 1; }
+  100% { transform: translate(-260%, 220%); opacity: 0; }
+}

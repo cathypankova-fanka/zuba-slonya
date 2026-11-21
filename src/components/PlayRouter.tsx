@@ -11,6 +11,9 @@ import { BedtimeMission } from './BedtimeMission';
 import { DoctorMission } from './DoctorMission';
 import { GardenMission } from './GardenMission';
 import { LaundryMission } from './LaundryMission';
+import { PopitGame } from './PopitGame';
+import { PhoneGame } from './PhoneGame';
+import { TraceGame } from './TraceGame';
 
 /** Маршрутизатор новых мини-игр. */
 export const PlayRouter: React.FC<{ mode: PlayMode; character: CharacterItem; soundEnabled: boolean }> = ({ mode, character, soundEnabled }) => {
@@ -26,6 +29,10 @@ export const PlayRouter: React.FC<{ mode: PlayMode; character: CharacterItem; so
     case 'doctor': return <DoctorMission {...p} />;
     case 'garden': return <GardenMission {...p} />;
     case 'laundry': return <LaundryMission {...p} />;
+    case 'popit': return <PopitGame soundEnabled={soundEnabled} />;
+    case 'phone': return <PhoneGame {...p} />;
+    case 'numbers': return <TraceGame key="n" kind="numbers" soundEnabled={soundEnabled} />;
+    case 'letters': return <TraceGame key="l" kind="letters" soundEnabled={soundEnabled} />;
     default: return null;
   }
 };

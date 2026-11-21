@@ -48,6 +48,11 @@ const Stack: React.FC<{ n: number; syrup: number; tops: Placed[]; w: string }> =
 export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled: boolean }> = ({ character, soundEnabled }) => {
   const { idx, step, doneFx, next, restart: restartSteps } = useSteps(STEPS, soundEnabled, VOICES);
   const [bowl, setBowl] = useState<string[]>([]);
+  // замешиваем по-настоящему: яйцо разбить (2 тапа), муку насыпать и молоко налить (держать)
+  const [eggTaps, setEggTaps] = useState(0);
+  const [flourAmt, setFlourAmt] = useState(0);
+  const [milkAmt, setMilkAmt] = useState(0);
+  const actorRef = useRef<HTMLDivElement>(null);
   const [whisk, setWhisk] = useState(0);
   const [made, setMade] = useState(0);
   const [phase, setPhase] = useState<'pour' | 'wait' | 'flip' | 'fly'>('pour');
@@ -63,15 +68,33 @@ export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled:
   const hintFrom = useRef<HTMLButtonElement | null>(null);
   const flipStart = useRef<number | null>(null);
 
-  const restart = () => { setBowl([]); setWhisk(0); setMade(0); setPhase('pour'); setSize(0); setGolden(false); setSyrup(0); setTops([]); restartSteps(); };
+  const restart = () => { setEggTaps(0); setFlourAmt(0); setMilkAmt(0); setBowl([]); setWhisk(0); setMade(0); setPhase('pour'); setSize(0); setGolden(false); setSyrup(0); setTops([]); restartSteps(); };
   useEffect(() => { if (step === 'serve') setServedKey((k) => k + 1); }, [step]);
 
   const addIngr = (id: string) => {
     if (doneFx || bowl.includes(id)) return;
-    soundEngine.playGamePop(soundEnabled, 3 + bowl.length);
+    soundEngine.playGameOk(soundEnabled);
     const n = [...bowl, id]; setBowl(n);
     if (n.length === INGR.length) window.setTimeout(() => next(), 500);
   };
+  const cur = step === 'mix' ? INGR.find((i) => !bowl.includes(i.id))?.id : undefined;
+  const tapEgg = () => {
+    if (cur !== 'egg' || doneFx) return;
+    const n = eggTaps + 1; setEggTaps(n);
+    soundEngine.playGamePop(soundEnabled, n === 1 ? 2 : 6);
+    if (n >= 2) window.setTimeout(() => addIngr('egg'), 450);
+  };
+  const pourStop = useRef<() => void>(() => {});
+  const pourIn = useHold(step === 'mix' && (cur === 'flour' || cur === 'milk') && !doneFx, (dt) => {
+    const setter = cur === 'flour' ? setFlourAmt : setMilkAmt;
+    const id = cur!;
+    setter((a) => {
+      const n = Math.min(1, a + dt / 1.6);
+      if (Math.floor(n * 5) !== Math.floor(a * 5)) soundEngine.playGamePop(soundEnabled, id === 'flour' ? 2 : 4);
+      if (a < 1 && n >= 1) { pourStop.current(); window.setTimeout(() => addIngr(id), 200); }
+      return n;
+    });
+  });
   const whiskRub = useRub(step === 'whisk' && !doneFx, (d) => {
     if (d <= 0) return;
     setWhisk((w) => {
@@ -81,6 +104,8 @@ export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled:
       return n;
     });
   });
+
+  pourStop.current = pourIn.stop;
 
   // ----- жарим: налить (держать) → подождать → перевернуть (смахнуть вверх) -----
   const pourHold = useHold(step === 'cook' && phase === 'pour' && !doneFx, (dt) => {
@@ -138,7 +163,7 @@ export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled:
   let hintTarget: React.RefObject<Element | null> = centerRef;
   let hintItem: string | undefined;
   hintFrom.current = null;
-  if (step === 'mix' && nextIngr) { hintItem = nextIngr.src; hintFrom.current = plateEls.current[nextIngr.id] ?? null; }
+  if (step === 'mix' && nextIngr) { hintKind = nextIngr.id === 'egg' ? 'tap' : 'hold'; hintTarget = actorRef; }
   else if (step === 'whisk') hintKind = 'circle';
   else if (step === 'cook') { hintTarget = panRef; hintKind = phase === 'flip' ? 'swipe' : 'hold'; }
   else if (step === 'syrup') hintKind = 'rub';
@@ -146,8 +171,7 @@ export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled:
 
   const pRef = (k: string) => (el: HTMLButtonElement | null) => { plateEls.current[k] = el; };
   const tray =
-    step === 'mix' ? INGR.map((i) => <Plate key={i.id} src={i.src} label={i.name} plateRef={pRef(i.id)} onPick={() => addIngr(i.id)} target={centerRef} onDrop={() => addIngr(i.id)} dim={bowl.includes(i.id)} />)
-    : step === 'top' ? TOPS.map((t) => <Plate key={t.id} src={t.src} label={t.name} plateRef={pRef(t.id)} onPick={() => addTop(t.id)} target={centerRef} onDrop={(x, y) => addTop(t.id, x, y)} />)
+    step === 'top' ? TOPS.map((t) => <Plate key={t.id} src={t.src} label={t.name} plateRef={pRef(t.id)} onPick={() => addTop(t.id)} target={centerRef} onDrop={(x, y) => addTop(t.id, x, y)} />)
     : undefined;
 
   const BOWL = 'min(56vmin, 480px)';
@@ -175,11 +199,36 @@ export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled:
         <div ref={centerRef} {...(step === 'whisk' ? whiskRub : {})} className="relative cursor-pointer" style={{ width: BOWL, height: `calc(${BOWL} * 0.82)`, ...(step === 'whisk' ? whiskRub.style : {}) }}>
           <img src={P('batter')} alt="" draggable={false} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
           {/* до замеса в миске видно продукты, тесто проявляется венчиком */}
-          <div className="absolute rounded-[50%] pointer-events-none" style={{ left: '9%', right: '9%', top: '4%', height: '34%', background: '#FFFBF0', opacity: 1 - whisk }} />
-          {bowl.map((id, i) => (
-            <img key={id} src={id === 'egg' ? P('egg') : id === 'flour' ? P('flour') : P('milk')} alt="" className="absolute w-[22%] pointer-events-none animate-pop-in"
-              style={{ left: `${18 + i * 24}%`, top: '2%', opacity: 1 - whisk, transform: `rotate(${whisk * 720}deg) scale(${1 - whisk * 0.5})` }} />
-          ))}
+          <div className="absolute rounded-[50%] pointer-events-none" style={{ left: '9%', right: '9%', top: '4%', height: '34%', background: 'radial-gradient(ellipse at 50% 40%, #E6EEF5, #CBD8E3)', opacity: 1 - whisk }} />
+          {/* что уже в миске: молоко, мука горкой, желток */}
+          <div className="absolute rounded-[50%] pointer-events-none" style={{ left: '12%', right: '12%', top: '7%', height: '28%', background: '#FFFFFF', opacity: milkAmt * (1 - whisk) * 0.9 }} />
+          {flourAmt > 0 && <div className="absolute rounded-[50%] pointer-events-none" style={{ left: `${44 - flourAmt * 18}%`, width: `${flourAmt * 36}%`, top: `${16 - flourAmt * 10}%`, height: `${flourAmt * 22}%`, background: 'radial-gradient(circle at 45% 35%, #FFFDF8, #E8DCC6)', opacity: 1 - whisk, boxShadow: '0 2px 4px rgba(0,0,0,.08)' }} />}
+          {bowl.includes('egg') && (
+            <div className="absolute pointer-events-none animate-pop-in" style={{ left: '26%', top: '10%', width: '20%', aspectRatio: '1.2', opacity: 1 - whisk }}>
+              <div className="absolute inset-0 rounded-[50%] bg-white/90" /><div className="absolute left-[28%] top-[22%] w-[44%] h-[52%] rounded-full" style={{ background: 'radial-gradient(circle at 40% 35%, #FDE047, #F59E0B)' }} />
+            </div>
+          )}
+          {step === 'mix' && cur && (
+            <div ref={actorRef} {...(cur !== 'egg' ? pourIn.bind : {})} onClick={cur === 'egg' ? tapEgg : undefined}
+              className="absolute cursor-pointer select-none" style={{ right: '-14%', top: '-58%', width: '42%', aspectRatio: '1', ...(cur !== 'egg' ? pourIn.bind.style : {}) }}>
+              {cur === 'egg' && (
+                <div className={`relative w-full h-full ${eggTaps === 0 ? 'animate-bounce' : ''}`}>
+                  <img src={P('egg')} alt="" draggable={false} className="w-full h-full object-contain pointer-events-none" style={{ transform: eggTaps ? 'rotate(-35deg) translate(-10%, 10%)' : undefined, transition: 'transform .3s' }} />
+                  {eggTaps >= 1 && <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none"><polyline points="28,52 38,44 46,54 55,43 63,53 72,46" fill="none" stroke="#7C5A3A" strokeWidth="4" strokeLinejoin="round" /></svg>}
+                  {eggTaps >= 2 && <div className="absolute left-[20%] top-[60%] w-[30%] h-[30%] rounded-full animate-[eggdrop_.45s_ease-in_forwards]" style={{ background: 'radial-gradient(circle at 40% 35%, #FDE047, #F59E0B)' }} />}
+                </div>
+              )}
+              {cur !== 'egg' && (
+                <>
+                  <img src={cur === 'flour' ? P('flour') : P('milk')} alt="" draggable={false} className="w-full h-full object-contain pointer-events-none transition-transform duration-300"
+                    style={{ transform: pourIn.holding ? 'rotate(-115deg) translate(10%, -10%)' : 'rotate(0deg)', transformOrigin: '50% 60%' }} />
+                  {pourIn.holding && (cur === 'milk'
+                    ? <div className="absolute left-[2%] top-[62%] w-[9%] rounded-full bg-white pointer-events-none" style={{ height: '120%', boxShadow: '0 0 4px rgba(0,0,0,.15)' }} />
+                    : [0, 1, 2, 3, 4, 5].map((k) => <span key={k} className="absolute w-[7%] h-[7%] rounded-full bg-white pointer-events-none animate-bounce" style={{ left: `${-2 + (k % 3) * 6}%`, top: `${70 + k * 12}%`, animationDelay: `${k * 0.07}s`, boxShadow: '0 0 2px #ccc' }} />))}
+                </>
+              )}
+            </div>
+          )}
           {step === 'whisk' && <img src={P('whisk')} alt="" className="absolute w-[30%] pointer-events-none" style={{ left: `${38 + Math.cos(whisk * 30) * 14}%`, top: `${-30 + Math.sin(whisk * 30) * 6}%`, transform: 'rotate(-20deg)' }} />}
         </div>
       )}
