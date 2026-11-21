@@ -10,7 +10,7 @@ import { playVoice, sayRandom, whenVoiceIdle } from '../utils/voice';
 import { useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
 import { BlowBadge } from './PlayKit';
-import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, NeedRow, Plate, useStepHint } from './CookKit';
 
 interface Recipe { id: string; broth: string; color: string; items: SoupIngredientId[]; toppings: SoupIngredientId[] }
 const RECIPES: Recipe[] = [
@@ -79,13 +79,17 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   const chopAt = useRef<Record<string, { t: number; x: number }>>({});
 
   const [doneFx, setDoneFx] = useState(false);
+  const stepBusy = useRef(false);
   const next = useCallback((v?: string) => {
+    if (stepBusy.current) return; // повторные нажатия не перескакивают шаги
+    stepBusy.current = true;
     soundEngine.playGameOk(soundEnabled);
     setDoneFx(true); // большая звезда: шаг выполнен
     if (v) window.setTimeout(() => say(v, soundEnabled), 150);
     // сначала договаривается фраза, потом переход к следующему шагу
     window.setTimeout(() => whenVoiceIdle(() => {
       setDoneFx(false);
+      stepBusy.current = false;
       setIdx((i) => Math.min(i + 1, STEPS.length - 1));
       resetIdle();
     }), 900);
@@ -147,7 +151,7 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
 
   const dishUrl = getSoupBaseAssetUrl(recipe.broth) ?? undefined;
   const potSize = 'min(64vmin, 560px)';
-  const restart = () => { setIdx(0); setBasket([]); setCuts({}); setInPot([]); setTurns(0); setTasted(false); setTops([]); setHeat(1); cooled.current = false; };
+  const restart = () => { stepBusy.current = false; setIdx(0); setBasket([]); setCuts({}); setInPot([]); setTurns(0); setTasted(false); setTops([]); setHeat(1); cooled.current = false; };
 
   // ---------- действия ----------
   const pantryPick = (id: SoupIngredientId) => {
@@ -245,7 +249,7 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
       {step === 'pick' && (
         <div className="grid grid-cols-2 gap-[3vmin]">
           {RECIPES.map((r) => (
-            <button key={r.id} type="button" aria-label={`рецепт ${r.id}`} onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => next(), 250); }}
+            <button key={r.id} type="button" aria-label={`рецепт ${r.id}`} onClick={() => { if (doneFx) return; setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => next(), 250); }}
               className="rounded-[2.5rem] bg-white/90 shadow-xl p-[1.5vmin] active:scale-95 transition-transform flex flex-col items-center gap-1">
               <img src={getSoupBaseAssetUrl(r.broth)!} alt="" draggable={false} className="object-contain" style={{ width: 'min(30vmin, 250px)', height: 'min(24vmin, 200px)' }} />
               <div className="flex gap-1">{r.items.map((p) => <img key={p} src={ing(p)} alt="" className="w-[6vmin] h-[6vmin] max-w-12 max-h-12 object-contain" />)}</div>
@@ -255,11 +259,14 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
       )}
 
       {step === 'pantry' && (
+        <div className="flex flex-col items-center gap-[3vmin]">
+        <NeedRow items={recipe.items.map((x) => ({ key: x, src: ing(x), done: basket.includes(x) }))} />
         <div ref={centerRef} className="relative flex flex-col items-center justify-end" style={{ width: 'min(58vmin, 480px)', height: 'min(44vmin, 360px)' }}>
           <div className="absolute inset-x-[8%] bottom-[18%] flex flex-wrap justify-center gap-1 z-10">
             {basket.map((b) => <img key={b} src={ing(b)} alt="" className="w-[24%] object-contain animate-pop-in drop-shadow" />)}
           </div>
           <div className="text-[min(40vmin,330px)] leading-none select-none">🧺</div>
+        </div>
         </div>
       )}
 
@@ -329,7 +336,12 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
         </div>
       )}
 
-      {step === 'garnish' && bowl('min(66vmin, 580px)', centerRef)}
+      {step === 'garnish' && (
+        <div className="flex flex-col items-center gap-[3vmin]">
+          <NeedRow items={recipe.toppings.map((x) => ({ key: x, src: ing(x), done: tops.includes(x) }))} />
+          {bowl('min(60vmin, 540px)', centerRef)}
+        </div>
+      )}
 
       {step === 'serve' && (
         <FeedServe character={character} reaction={reaction} runKey={key} soundEnabled={soundEnabled} onRestart={restart}

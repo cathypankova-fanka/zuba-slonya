@@ -8,7 +8,7 @@ import { soundEngine } from '../utils/soundEngine';
 import { playVoice, sayRandom, whenVoiceIdle } from '../utils/voice';
 import { IdleHandPointer, useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
-import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, NeedRow, Plate, useStepHint } from './CookKit';
 
 /**
  * Пицца как «миссия» из шагов (картинки, без текста):
@@ -85,13 +85,17 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
   const { showHint, resetIdle } = useIdleHint(7000, step !== 'serve' && step !== 'bake');
 
   const [doneFx, setDoneFx] = useState(false);
+  const stepBusy = useRef(false);
   const goNext = useCallback(
     (voice?: string) => {
+      if (stepBusy.current) return; // повторные нажатия, пока помощник договаривает, не перескакивают шаги
+      stepBusy.current = true;
       soundEngine.playGameOk(soundEnabled);
       setDoneFx(true); // большая звезда: шаг выполнен
       if (voice) window.setTimeout(() => say(voice, soundEnabled), 150);
       window.setTimeout(() => whenVoiceIdle(() => {
         setDoneFx(false);
+        stepBusy.current = false;
         setStepIdx((i) => Math.min(i + 1, STEPS.length - 1));
         resetIdle();
       }), 900);
@@ -100,7 +104,7 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
   );
 
   const restart = () => {
-    setStepIdx(0); setBasket([]); setTurns(0); setBlobs([]); setSauceDone(false); setCheese(0);
+    stepBusy.current = false; setStepIdx(0); setBasket([]); setTurns(0); setBlobs([]); setSauceDone(false); setCheese(0);
     setPlaced([]); setSelTop(null); setOvenState('idle'); setBakePct(0); setCuts([]);
   };
 
@@ -363,7 +367,7 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
         <div className="grid grid-cols-2 gap-[3vmin]">
           {RECIPES.map((r) => (
             <button key={r.id} type="button" aria-label={r.title}
-              onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
+              onClick={() => { if (doneFx) return; setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
               className="rounded-full bg-white/90 shadow-xl p-[1.5vmin] active:scale-95 transition-transform">
               <PizzaPreview r={r} size="min(32vmin, 260px)" />
             </button>
@@ -372,18 +376,24 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
       )}
 
       {step === 'gather' && (
+        <div className="flex flex-col items-center gap-[3vmin]">
+        <NeedRow items={recipe.toppings.map((t) => ({ key: t, src: getPizzaToppingAssetUrl(t), done: basket.includes(t) }))} />
         <div ref={basketRef} className="relative flex flex-col items-center justify-end" style={{ width: 'min(58vmin, 480px)', height: 'min(44vmin, 360px)' }}>
           <div className="absolute inset-x-[8%] bottom-[18%] flex flex-wrap justify-center gap-1 z-10">
             {basket.map((b) => <img key={b} src={getPizzaToppingAssetUrl(b)} alt="" className="w-[22%] object-contain animate-pop-in drop-shadow" />)}
           </div>
           <div className="text-[min(40vmin,330px)] leading-none select-none">🧺</div>
         </div>
+        </div>
       )}
 
       {(step === 'dough' || step === 'sauce' || step === 'cheese' || step === 'top' || step === 'cut') && (
+        <div className="flex flex-col items-center gap-[3vmin]">
+        {step === 'top' && <NeedRow items={recipe.toppings.map((t) => ({ key: t, src: getPizzaToppingAssetUrl(t), done: placed.filter((q) => q.id === t).length >= recipe.perTopping }))} />}
         <div className="rounded-full bg-[#C7A27C] shadow-[0_14px_0_#A07C58,0_24px_40px_rgba(0,0,0,0.25)] flex items-center justify-center"
           style={{ width: `calc(${BOARD} * 1.1)`, height: `calc(${BOARD} * 1.1)` }}>
           {pizzaBoard(true)}
+        </div>
         </div>
       )}
 

@@ -136,6 +136,35 @@ export const LoopScroller: React.FC<{ children: React.ReactNode[] }> = ({ childr
 
 // ---------------------------------------------------------------- тарелка
 
+/** Эффект «положили»: картинка летит дугой с тарелки на место, а там — брызги звёздочек. Без React-состояния. */
+const BURST_COLORS = ['#FFD54A', '#FF8FB1', '#7FDBFF', '#9BE15D', '#FFFFFF', '#FFB347'];
+export function sparkleBurst(x: number, y: number, n = 12): void {
+  if (typeof document === 'undefined') return;
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('span');
+    const a = (i / n) * Math.PI * 2 + Math.random() * 0.4, d = 40 + Math.random() * 50, sz = 7 + Math.random() * 9;
+    el.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;z-index:70;pointer-events:none;border-radius:${i % 3 ? '50%' : '2px'};background:${BURST_COLORS[i % BURST_COLORS.length]};box-shadow:0 0 6px rgba(255,255,255,.9)`;
+    document.body.appendChild(el);
+    el.animate([
+      { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d}px)) scale(1) rotate(${Math.random() * 180}deg)`, opacity: 0 },
+    ], { duration: 550 + Math.random() * 200, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = () => el.remove();
+  }
+}
+function flyTo(src: string, from: DOMRect, to: { x: number; y: number }, w: number, onLand: () => void): void {
+  const el = document.createElement('img');
+  el.src = src;
+  el.style.cssText = `position:fixed;left:0;top:0;width:${w}px;z-index:70;pointer-events:none;filter:drop-shadow(0 8px 8px rgba(0,0,0,.3))`;
+  document.body.appendChild(el);
+  const fx = from.left + from.width / 2, fy = from.top + from.height / 2;
+  const mx = (fx + to.x) / 2, my = Math.min(fy, to.y) - 90;
+  el.animate([
+    { transform: `translate(${fx}px, ${fy}px) translate(-50%,-50%) scale(1)` },
+    { transform: `translate(${mx}px, ${my}px) translate(-50%,-50%) scale(1.25) rotate(-12deg)`, offset: 0.5 },
+    { transform: `translate(${to.x}px, ${to.y}px) translate(-50%,-50%) scale(.8) rotate(8deg)`, opacity: 0.2 },
+  ], { duration: 480, easing: 'ease-in-out' }).onfinish = () => { el.remove(); onLand(); };
+}
+
 /**
  * Большая тарелка с ингредиентом внизу экрана. Нажатие → onPick, перетаскивание на target → onDrop(точка).
  */
@@ -155,6 +184,22 @@ export const Plate: React.FC<{
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const start = useRef<{ x: number; y: number; moved: boolean; mode?: 'drag' | 'scroll'; lx: number; v: number } | null>(null);
   const loop = React.useContext(LoopCtx);
+  const wrongRef = useRef(wrong);
+  wrongRef.current = wrong;
+  const btnEl = useRef<HTMLButtonElement | null>(null);
+  /** после выбора: если ингредиент подошёл (игра не пометила «не то») — полёт к цели и звёздочки */
+  const celebrate = (at?: { x: number; y: number }) => {
+    const r = target?.current?.getBoundingClientRect();
+    if (!r) return;
+    window.setTimeout(() => {
+      if (wrongRef.current) return;
+      const to = at ?? { x: r.left + r.width / 2, y: r.top + r.height * 0.45 };
+      if (at) { sparkleBurst(to.x, to.y); return; }
+      const b = btnEl.current?.getBoundingClientRect();
+      if (!b) { sparkleBurst(to.x, to.y); return; }
+      flyTo(src, b, to, b.width * 0.7, () => sparkleBurst(to.x, to.y));
+    }, 40);
+  };
 
   const down = (e: React.PointerEvent) => {
     if (dim) return;
@@ -185,17 +230,22 @@ export const Plate: React.FC<{
     start.current = null;
     setDrag(null);
     if (!s) return;
-    if (!s.moved) { onPick?.(); return; }
+    if (!s.moved) { onPick?.(); if (onPick) celebrate(); return; }
     if (s.mode === 'scroll') { loop?.fling(s.v); return; }
     const r = target?.current?.getBoundingClientRect();
     if (r && e.clientX > r.left - 20 && e.clientX < r.right + 20 && e.clientY > r.top - 20 && e.clientY < r.bottom + 20) {
       onDrop?.(e.clientX, e.clientY);
+      if (onDrop) celebrate({ x: e.clientX, y: e.clientY });
     }
   };
 
   return (
     <>
-      <button ref={loop && loop.copy !== 1 ? undefined : plateRef} type="button" aria-label={label}
+      <button ref={(el) => {
+          btnEl.current = el;
+          if (loop && loop.copy !== 1) return;
+          if (typeof plateRef === 'function') plateRef(el); else if (plateRef) (plateRef as React.MutableRefObject<HTMLButtonElement | null>).current = el;
+        }} type="button" aria-label={label}
         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { start.current = null; setDrag(null); }}
         data-copy-btn={loop?.copy ?? 1}
         className={`relative shrink-0 rounded-full flex items-center justify-center transition-all duration-200 ${
@@ -355,3 +405,38 @@ export const bottleSrc = (c: string) => (bottleCache[c] ??= 'data:image/svg+xml,
   `<path d='M20 48q0-8 8-8h44q8 0 8 8v96q0 13-13 13H33q-13 0-13-13z' fill='${c}' stroke='rgba(0,0,0,.18)' stroke-width='2'/>` +
   `<rect x='28' y='54' width='9' height='84' rx='4.5' fill='#fff' opacity='.4'/>` +
   `<circle cx='57' cy='100' r='17' fill='#fff' opacity='.92'/><path d='M57 88c6 8 9 12 9 16a9 9 0 0 1-18 0c0-4 3-8 9-16z' fill='${c}'/></svg>`));
+
+// ---------------------------------------------------------------- «что нужно»
+
+export interface NeedItem { key: string; src: string; done: boolean; now?: boolean }
+
+/**
+ * Ряд «что нужно» над сценой: кружочки с картинками; нужное сейчас мигает жёлтым, сделанное — с зелёной галочкой.
+ * ordered — между кружочками стрелочки (класть по порядку). Сам ужимается, если кружочков много.
+ */
+export const NeedRow: React.FC<{ items: NeedItem[]; ordered?: boolean; lead?: string }> = ({ items, ordered, lead }) => {
+  const many = items.length + (lead ? 1 : 0) > 4;
+  const size = many ? 'min(11vmin, 72px)' : 'min(14vmin, 88px)';
+  return (
+    <div className={`flex items-center justify-center ${many ? 'gap-[0.8vmin]' : 'gap-[2vmin]'} px-2 shrink-0`} aria-hidden>
+      {lead && (
+        <>
+          <span className="rounded-full bg-white/95 shadow-lg border-4 border-white flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+            <img src={lead} alt="" className="w-[84%] h-[84%] object-contain" />
+          </span>
+          <span className="text-white font-black drop-shadow text-[min(6vmin,34px)]">=</span>
+        </>
+      )}
+      {items.map((it, i) => (
+        <React.Fragment key={it.key}>
+          {ordered && i > 0 && <span className="text-white/90 font-black text-[min(4vmin,24px)] drop-shadow">›</span>}
+          <span className={`relative rounded-full bg-white/95 shadow-lg border-4 flex items-center justify-center shrink-0 transition-all ${it.done ? 'border-[#10C97A]' : it.now !== false ? 'border-[#FFB800] animate-pulse' : 'border-white opacity-70'}`}
+            style={{ width: size, height: size }}>
+            <img src={it.src} alt="" className="w-[76%] h-[76%] object-contain" />
+            {it.done && <span className="absolute -right-1 -top-1 w-[42%] h-[42%] rounded-full bg-[#10C97A] text-white font-black flex items-center justify-center text-[min(4.5vmin,22px)]">✓</span>}
+          </span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};

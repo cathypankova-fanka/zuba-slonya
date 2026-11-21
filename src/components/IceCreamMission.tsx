@@ -10,7 +10,7 @@ import { useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
 import { createPortal } from 'react-dom';
 import { ICE_CREAM_SYRUPS } from '../data/kitchenData';
-import { bottleSrc, CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
+import { bottleSrc, CookScreen, NeedRow, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
 
 interface Recipe { id: string; base: IceCreamBaseId; flavors: string[]; syrup: string; syrupColor: string; garnish: IceCreamGarnishId[] }
 const RECIPES: Recipe[] = [
@@ -18,6 +18,10 @@ const RECIPES: Recipe[] = [
   { id: 'tower', base: 'choco_cone', flavors: ['chocolate', 'vanilla', 'chocolate'], syrup: 'chocolate', syrupColor: '#5C2E14', garnish: ['wafer', 'sprinkles'] },
   { id: 'green', base: 'cup', flavors: ['pistachio', 'mint'], syrup: 'caramel', syrupColor: '#D97706', garnish: ['stars', 'cream'] },
   { id: 'berry', base: 'bowl', flavors: ['blueberry', 'strawberry', 'mango'], syrup: 'blueberry', syrupColor: '#7C3AED', garnish: ['berry', 'marshmallow'] },
+  { id: 'banana', base: 'cup', flavors: ['banana', 'chocolate'], syrup: 'caramel', syrupColor: '#D97706', garnish: ['cream', 'cookie'] },
+  { id: 'bubble', base: 'cone', flavors: ['bubblegum', 'vanilla'], syrup: 'strawberry', syrupColor: '#E11D48', garnish: ['sprinkles', 'stars'] },
+  { id: 'mango', base: 'choco_cone', flavors: ['mango', 'pistachio'], syrup: 'caramel', syrupColor: '#D97706', garnish: ['wafer', 'cherry'] },
+  { id: 'party', base: 'bowl', flavors: ['strawberry', 'chocolate', 'vanilla'], syrup: 'chocolate', syrupColor: '#5C2E14', garnish: ['cream', 'cherry', 'sprinkles'] },
 ];
 const ICONS = ['📖', '🧊', '🍦', '🍨', '🍯', '🍒', '😋'];
 const STEPS = ['pick', 'freezer', 'base', 'scoops', 'syrup', 'garnish', 'serve'] as const;
@@ -93,13 +97,17 @@ export const IceCreamMission: React.FC<{ character: CharacterItem; soundEnabled:
   const { resetIdle } = useIdleHint(7000, step !== 'serve');
   const syrupDrag = useRef(false);
 
+  const stepBusy = useRef(false);
   const next = useCallback((v?: string) => {
+      if (stepBusy.current) return; // повторные нажатия, пока помощник договаривает, не перескакивают шаги
+      stepBusy.current = true;
     soundEngine.playGameOk(soundEnabled);
     setDoneFx(true); // большая звезда: шаг выполнен
     if (v) window.setTimeout(() => say(v, soundEnabled), 150);
     // сначала договаривается фраза, потом переход к следующему шагу
     window.setTimeout(() => whenVoiceIdle(() => {
       setDoneFx(false);
+      stepBusy.current = false;
       setIdx((i) => Math.min(i + 1, STEPS.length - 1));
       resetIdle();
     }), 900);
@@ -195,7 +203,7 @@ export const IceCreamMission: React.FC<{ character: CharacterItem; soundEnabled:
     });
   };
   const syrupUp = () => { syrupDrag.current = false; setSqueeze(null); };
-  const restart = () => { setIdx(0); setBasket([]); setBase(null); setScoops([]); setSyrupPct(0); setGarnish([]); setBottle(null); setDrizzle([]); };
+  const restart = () => { stepBusy.current = false; setIdx(0); setBasket([]); setBase(null); setScoops([]); setSyrupPct(0); setGarnish([]); setBottle(null); setDrizzle([]); };
 
   // ---------- интерфейс: каждый шаг на весь экран ----------
   const centerRef = useRef<HTMLDivElement>(null);
@@ -221,6 +229,16 @@ export const IceCreamMission: React.FC<{ character: CharacterItem; soundEnabled:
   const fRef = (id: string) => (el: HTMLButtonElement | null) => { plateEls.current[id] = el; };
   const flavorName = (id: string) => ICE_CREAM_FLAVORS.find((f) => f.id === id)?.name ?? '';
   const BIG = 'min(46vmin, 400px)';
+  const portraitPick = window.innerHeight > window.innerWidth * 1.2;
+  // «что нужно» на каждом шаге — чтобы не угадывать
+  const needItems =
+    step === 'freezer' ? uniq.map((f) => ({ key: f, src: getIceCreamFlavorAssetUrl(f)!, done: basket.includes(f) }))
+    : step === 'base' ? [{ key: 'b', src: getIceCreamBaseAssetUrl(recipe.base), done: !!base }]
+    : step === 'scoops' ? recipe.flavors.map((f, i) => ({ key: `${f}${i}`, src: getIceCreamFlavorAssetUrl(f)!, done: i < scoops.length, now: i === scoops.length }))
+    : step === 'syrup' ? [{ key: 's', src: bottleSrc(recipe.syrupColor), done: syrupPct >= 1 }]
+    : step === 'garnish' ? recipe.garnish.map((g) => ({ key: g, src: getIceCreamGarnishAssetUrl(g), done: garnish.includes(g) }))
+    : null;
+  const needRow = needItems && <NeedRow items={needItems} ordered={step === 'scoops'} />;
 
   const tray =
     step === 'freezer' ? <LoopScroller>{flavorShelf.map((f) => (
@@ -253,17 +271,18 @@ export const IceCreamMission: React.FC<{ character: CharacterItem; soundEnabled:
       recipe={step !== 'pick' && step !== 'serve' ? <Cone base={recipe.base} scoops={recipe.flavors} syrup={recipe.syrupColor} garnish={recipe.garnish} size="68%" /> : undefined}
       tray={tray}>
       {step === 'pick' && (
-        <div className="grid grid-cols-2 gap-[3vmin]">
+        <div className={`grid ${portraitPick ? 'grid-cols-2' : 'grid-cols-4 pr-[min(15vmin,140px)]'} gap-[2.5vmin]`}>
           {RECIPES.map((r) => (
-            <button key={r.id} type="button" aria-label={`рецепт ${r.id}`} onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => next(), 250); }}
+            <button key={r.id} type="button" aria-label={`рецепт ${r.id}`} onClick={() => { if (doneFx) return; setRecipe(r); next(); }}
               className="rounded-[2.5rem] bg-white/90 shadow-xl p-[1.5vmin] active:scale-95 transition-transform flex justify-center">
-              <Cone base={r.base} scoops={r.flavors} syrup={r.syrupColor} garnish={r.garnish} size="min(28vmin, 230px)" />
+              <Cone base={r.base} scoops={r.flavors} syrup={r.syrupColor} garnish={r.garnish} size={portraitPick ? 'min(26vw, 12.5vh, 230px)' : 'min(20vmin, 180px)'} />
             </button>
           ))}
         </div>
       )}
 
       {step === 'freezer' && (
+        <div className="flex flex-col items-center gap-[3vmin]">{needRow}
         <div ref={centerRef} className="relative rounded-[3rem] bg-gradient-to-b from-[#E0F2FE] to-[#93C5FD] border-[6px] border-white shadow-2xl flex flex-col items-center justify-center"
           style={{ width: 'min(62vmin, 520px)', height: 'min(50vmin, 420px)' }}>
           <div className="absolute top-[6%] text-[9vmin] opacity-80">❄️</div>
@@ -278,18 +297,22 @@ export const IceCreamMission: React.FC<{ character: CharacterItem; soundEnabled:
             ))}
           </div>
         </div>
+        </div>
       )}
 
       {step === 'base' && (
+        <div className="flex flex-col items-center gap-[3vmin]">{needRow}
         <div ref={centerRef} className="rounded-full bg-white/50 border-[6px] border-dashed border-[#FFB800] flex items-center justify-center"
           style={{ width: BIG, height: BIG }}>
           {base
             ? <img src={getIceCreamBaseAssetUrl(base)} alt="" className="w-[80%] h-[80%] object-contain animate-pop-in" />
             : <img src={getIceCreamBaseAssetUrl(recipe.base)} alt="" className="w-[70%] h-[70%] object-contain opacity-40" />}
         </div>
+        </div>
       )}
 
       {(step === 'scoops' || step === 'syrup' || step === 'garnish') && (
+        <div className="flex flex-col items-center gap-[3vmin]">{needRow}
         <div ref={centerRef} className="relative"
           onPointerDown={syrupDown} onPointerUp={syrupUp} onPointerCancel={syrupUp} onPointerMove={syrupMove}
           style={{ touchAction: 'none', cursor: step === 'syrup' && bottle ? 'none' : undefined }}>
@@ -311,6 +334,7 @@ export const IceCreamMission: React.FC<{ character: CharacterItem; soundEnabled:
               <div className="h-full rounded-full" style={{ width: `${syrupPct * 100}%`, background: recipe.syrupColor }} />
             </div>
           )}
+        </div>
         </div>
       )}
 

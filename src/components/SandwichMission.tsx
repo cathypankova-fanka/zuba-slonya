@@ -7,7 +7,7 @@ import { soundEngine } from '../utils/soundEngine';
 import { playVoice, whenVoiceIdle } from '../utils/voice';
 import { useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
-import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, NeedRow, Plate, useStepHint } from './CookKit';
 
 /**
  * Бутерброд как «миссия» (картинки, без текста):
@@ -27,6 +27,10 @@ const RECIPES: Recipe[] = [
   { id: 'cheese', title: 'Сырный', bread: 'toast', spread: 'butter', layers: ['cheese', 'tomato'], decoys: ['banana', 'strawberry'] },
   { id: 'ham', title: 'С ветчиной', bread: 'rye', spread: 'cream_cheese', layers: ['ham', 'lettuce', 'cucumber'], decoys: ['banana', 'egg'] },
   { id: 'sweet', title: 'Сладкий', bread: 'toast', spread: 'jam', layers: ['banana', 'strawberry'], decoys: ['ham', 'lettuce'] },
+  { id: 'avocado', title: 'С авокадо', bread: 'rye', spread: 'cream_cheese', layers: ['avocado_slice', 'egg', 'tomato'], decoys: ['banana', 'salami'] },
+  { id: 'salmon', title: 'С рыбкой', bread: 'toast', spread: 'cream_cheese', layers: ['lettuce', 'salmon', 'cucumber'], decoys: ['strawberry', 'ham'] },
+  { id: 'salami', title: 'С колбаской', bread: 'baguette', spread: 'butter', layers: ['salami', 'cheese', 'lettuce'], decoys: ['banana', 'salmon'] },
+  { id: 'choco', title: 'Шоколадный', bread: 'toast', spread: 'choco', layers: ['banana', 'strawberry'], decoys: ['cucumber', 'egg'] },
 ];
 
 const STEPS = [
@@ -81,13 +85,17 @@ export const SandwichMission: React.FC<{ character: CharacterItem; soundEnabled:
   const { resetIdle } = useIdleHint(7000, step !== 'serve');
 
   const [doneFx, setDoneFx] = useState(false);
+  const stepBusy = useRef(false);
   const goNext = useCallback(
     (voice?: string) => {
+      if (stepBusy.current) return; // повторные нажатия не перескакивают шаги
+      stepBusy.current = true;
       soundEngine.playGameOk(soundEnabled);
       setDoneFx(true); // большая звезда: шаг выполнен
       if (voice) window.setTimeout(() => say(voice, soundEnabled), 150);
       window.setTimeout(() => whenVoiceIdle(() => {
         setDoneFx(false);
+        stepBusy.current = false;
         setStepIdx((i) => Math.min(i + 1, STEPS.length - 1));
         resetIdle();
       }), 900);
@@ -96,7 +104,7 @@ export const SandwichMission: React.FC<{ character: CharacterItem; soundEnabled:
   );
 
   const restart = () => {
-    setStepIdx(0); setBlobs([]); setPlaced([]); setTopOn(false); setCutProgress(0); setCutDone(false); setWrong(null);
+    stepBusy.current = false; setStepIdx(0); setBlobs([]); setPlaced([]); setTopOn(false); setCutProgress(0); setCutDone(false); setWrong(null);
   };
 
   useEffect(() => {
@@ -231,18 +239,22 @@ export const SandwichMission: React.FC<{ character: CharacterItem; soundEnabled:
       recipe={step !== 'pick' && step !== 'serve' ? <SandwichPicture r={recipe} size="86%" closed={false} /> : undefined}
       tray={tray}>
       {step === 'pick' && (
-        <div className="flex gap-[3vmin] flex-wrap justify-center">
+        <div className={`grid ${window.innerHeight > window.innerWidth * 1.2 ? 'grid-cols-2' : 'grid-cols-4 pr-[min(15vmin,140px)]'} gap-[2.5vmin]`}>
           {RECIPES.map((r) => (
             <button key={r.id} type="button" aria-label={r.title}
-              onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
+              onClick={() => { if (doneFx) return; setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
               className="rounded-full bg-white/90 shadow-xl p-[1.5vmin] flex items-center justify-center active:scale-95 transition-transform">
-              <SandwichPicture r={r} size="min(28vmin, 240px)" closed={false} />
+              <SandwichPicture r={r} size={window.innerHeight > window.innerWidth * 1.2 ? 'min(34vw, 15vh)' : 'min(22vmin, 200px)'} closed={false} />
             </button>
           ))}
         </div>
       )}
 
       {(step === 'spread' || step === 'layers' || step === 'top' || step === 'cut') && (
+        <div className="flex flex-col items-center gap-[3vmin]">
+        {step === 'spread' && getSandwichSpreadAssetUrl(recipe.spread) && <NeedRow items={[{ key: 's', src: getSandwichSpreadAssetUrl(recipe.spread)!, done: doneFx }]} />}
+        {step === 'layers' && <NeedRow ordered items={recipe.layers.map((l, i) => ({ key: l, src: getSandwichFillingAssetUrl(l), done: i < placed.length, now: i === placed.length }))} />}
+        {step === 'top' && <NeedRow items={[{ key: 't', src: getSandwichBreadAssetUrl(recipe.bread), done: doneFx }]} />}
         <div className="rounded-[3rem] bg-[#C7A27C] shadow-[0_14px_0_#A07C58,0_24px_40px_rgba(0,0,0,0.25)] p-[3%] relative"
           style={{ width: `calc(${BOARD} * 1.12)`, height: `calc(${BOARD} * 1.12)` }}>
           <div
@@ -256,6 +268,7 @@ export const SandwichMission: React.FC<{ character: CharacterItem; soundEnabled:
           >
             {sandwichBoard('100%', step === 'top' || step === 'cut', step === 'cut')}
           </div>
+        </div>
         </div>
       )}
 
