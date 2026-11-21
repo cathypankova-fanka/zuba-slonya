@@ -181,9 +181,11 @@ export default function App() {
     warmTvCache();
   }, []);
 
-  const [screen, setScreen] = useState<'menu' | 'play'>('menu');
-  const [splashDone, setSplashDone] = useState(false);
-  const [gameMode, setGameMode] = useState<AllGameMode>('face');
+  const [screen, setScreen] = useState<'menu' | 'play'>(import.meta.env.DEV && new URLSearchParams(location.search).get('mode') ? 'play' : 'menu');
+  const [splashDone, setSplashDone] = useState(import.meta.env.DEV && !!new URLSearchParams(location.search).get('mode'));
+  // dev: ?mode=pizza открывает игру сразу (для проверки вёрстки)
+  const devMode = import.meta.env.DEV ? (new URLSearchParams(location.search).get('mode') as AllGameMode | null) : null;
+  const [gameMode, setGameMode] = useState<AllGameMode>(devMode ?? 'face');
   const [randomHero, setRandomHero] = useState<(typeof CHARACTERS)[number] | null>(null);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>('baby');
 
@@ -1620,7 +1622,9 @@ export default function App() {
         gameMode === 'emotions' ||
         gameMode === 'tv' ||
         gameMode === 'coloring' ? (
-        <main className="flex-1 flex flex-col p-2 sm:p-4 max-w-[1160px] w-full mx-auto min-h-0 overflow-hidden">
+        <main className="legacy-play flex-1 flex flex-col p-2 sm:p-4 max-w-[1160px] w-full mx-auto min-h-0 overflow-hidden">
+          {/* телефон горизонтально: эти игры удобнее вертикально */}
+          <div className="rotate-hint" aria-hidden><span>📱</span></div>
           {gameMode === 'feed' && (
             <FeedGame
               initialCharacter={randomHero ?? activeCharacter}

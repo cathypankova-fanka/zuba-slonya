@@ -124,7 +124,7 @@ export const FaceMission: React.FC<{ character: CharacterItem; soundEnabled: boo
     }
   };
 
-  const H = step === 'paint' || step === 'draw' ? 'min(50vh, 460px)' : 'min(58vh, 520px)';
+  const H = step === 'paint' || step === 'draw' ? 'min(50vh, 460px, calc((100vw - 110px) * 4 / 3))' : 'min(58vh, 520px, calc((100vw - 110px) * 4 / 3))';
   const mirror = step === 'mirror';
   const ready = step === 'paint' ? rv.pct > 0.55 : step === 'draw' ? paint.activity >= 5 : step === 'dress' ? Object.values(worn).some(Boolean) : false;
   const goNext = () => {

@@ -545,7 +545,7 @@ export const PuzzleGame: React.FC<PuzzleGameProps> = ({ initialCharacter, soundE
         <div
           ref={boardRef}
           style={{ backgroundColor: hero.accentBg }}
-          className={`relative aspect-square w-[min(64vw,270px)] sm:w-[min(42vh,340px)] rounded-[32px] border-4 border-white shadow-[0_14px_32px_rgba(91,33,182,0.16)] overflow-visible transition-transform duration-300 ${
+          className={`relative aspect-square h-full w-auto max-h-[min(64vw,270px)] sm:max-h-[min(42vh,340px)] rounded-[32px] border-4 border-white shadow-[0_14px_32px_rgba(91,33,182,0.16)] overflow-visible transition-transform duration-300 ${
             celebrating ? 'scale-105 ring-4 ring-[#FACC15]' : ''
           }`}
         >
@@ -638,7 +638,7 @@ export const PuzzleGame: React.FC<PuzzleGameProps> = ({ initialCharacter, soundE
       </div>
 
       {/* Bottom Tray of Unplaced Pieces */}
-      <div className="w-full max-w-[780px] min-h-[104px] sm:min-h-[126px] flex flex-wrap items-center justify-center gap-3 sm:gap-5 px-3 py-2.5 toy-panel z-20 shrink-0">
+      <div className="w-full max-w-[780px] min-h-[104px] sm:min-h-[126px] flex flex-wrap items-center justify-center gap-2 sm:gap-5 px-2 sm:px-3 py-2.5 toy-panel z-20 shrink-0">
         {unplacedTrayPieces.length === 0 ? (
           <div className="flex items-center gap-2 text-[#10C97A] animate-pop-in" aria-hidden="true">
             <Sparkles className="w-8 h-8 fill-[#FACC15] text-[#F59E0B]" />
@@ -667,7 +667,7 @@ export const PuzzleGame: React.FC<PuzzleGameProps> = ({ initialCharacter, soundE
                     });
                   }}
                   aria-label="Часть пазла"
-                  className={`w-[86px] h-[86px] sm:w-[108px] sm:h-[108px] toy-chip p-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none transition-all ${
+                  className={`w-[min(18vw,17vh,86px)] h-[min(18vw,17vh,86px)] sm:w-[min(108px,17vh)] sm:h-[min(108px,17vh)] toy-chip p-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none transition-all ${
                     isDragged
                       ? 'opacity-25 scale-90 bg-[#F5F3FF]'
                       : isHintTarget

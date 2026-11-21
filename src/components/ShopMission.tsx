@@ -173,14 +173,18 @@ export const ShopMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   let from: React.RefObject<Element | null> | undefined = hintFrom;
   if (phase === 'pay') { hintTarget = termRef; from = phoneRef; }
 
-  const S = 'min(26vh, 220px)';
+  // телефон вертикально: покупатель сверху, витрина под ним, всё крупнее
+  const portrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.2;
+  const S = portrait ? 'min(30vw, 220px)' : 'min(26vh, 220px)';
+  const PLATE = portrait ? 'min(19vw, 132px)' : 'min(15.5vmin, 132px)';
+  const WANT = portrait ? 'min(17vw, 120px)' : 'min(14vmin, 120px)';
   const inBasket = useMemo(() => wants.filter((w) => got.includes(w.id)), [wants, got]);
 
   return (
     <CookScreen stepKey={phase === 'done' ? 'done' : `r${round}`} stepIdx={round} total={ROUNDS} done={phase === 'paid'}
       bg="linear-gradient(#FDF2F8 0%, #FFF7ED 58%, #D6A36B 58%, #B9824A 100%)">
       {phase !== 'done' ? (
-        <div className="relative w-full h-full flex items-center justify-center gap-[3vmin] px-[2vmin]">
+        <div className={`relative w-full h-full flex items-center justify-center px-[2vmin] ${portrait ? 'flex-col-reverse gap-[12vw]' : 'gap-[3vmin]'}`}>
           {/* покупатель, облачко с тенями, корзинка */}
           <div className="flex flex-col items-center gap-[1.5vmin]">
             <div className="flex items-start gap-[1.5vmin]">
@@ -193,7 +197,7 @@ export const ShopMission: React.FC<{ character: CharacterItem; soundEnabled: boo
                   {wants.map((w) => {
                     const ok = got.includes(w.id);
                     return (
-                      <div key={w.id} className="relative" style={{ width: 'min(14vmin, 120px)', height: 'min(14vmin, 120px)' }}>
+                      <div key={w.id} className="relative" style={{ width: WANT, height: WANT }}>
                         <img src={w.src} alt="" draggable={false} className="w-full h-full object-contain transition-all duration-500"
                           style={{ filter: ok ? 'none' : 'brightness(0) opacity(0.75)' }} />
                         {ok && <span className="absolute -right-1 -bottom-1 text-[4vmin]">✅</span>}
@@ -213,7 +217,7 @@ export const ShopMission: React.FC<{ character: CharacterItem; soundEnabled: boo
                 </div>
               </div>
               {(phase === 'pay' || phase === 'paid') && (
-                <div ref={termRef} className="relative animate-pop-in" style={{ width: 'min(15vmin, 128px)', height: 'min(21vmin, 182px)' }}>
+                <div ref={termRef} className="relative animate-pop-in" style={portrait ? { width: '20vw', height: '28vw' } : { width: 'min(15vmin, 128px)', height: 'min(21vmin, 182px)' }}>
                   <Terminal paid={phase === 'paid'} waves={near || phase === 'paid'} amount={wants.length} />
                   {phase === 'paid' && (
                     <div className="absolute left-[18%] right-[18%] top-[96%] bg-white rounded-b-md shadow-md overflow-hidden" style={{ animation: 'receipt 1s ease-out forwards' }}>
@@ -231,7 +235,7 @@ export const ShopMission: React.FC<{ character: CharacterItem; soundEnabled: boo
             <div className="grid grid-cols-4 gap-[1.4vmin]">
               {shelf.map((g) => (
                 <div key={g.id} className={got.includes(g.id) ? 'opacity-25 pointer-events-none' : ''}>
-                  <Plate src={g.src} label="" size="min(15.5vmin, 132px)" wrong={wrong === g.id}
+                  <Plate src={g.src} label="" size={PLATE} wrong={wrong === g.id}
                     plateRef={(el) => { plateEls.current[g.id] = el; }}
                     onPick={() => pick(g)} target={basketRef} onDrop={() => pick(g)} />
                 </div>
@@ -244,8 +248,8 @@ export const ShopMission: React.FC<{ character: CharacterItem; soundEnabled: boo
           {/* телефончик с карточкой */}
           {(phase === 'pay' || phase === 'paid') && (
             <div ref={phoneRef} onPointerDown={phoneDown} onPointerMove={phoneMove} onPointerUp={phoneUp}
-              className={`z-30 ${phone ? 'fixed' : 'absolute right-[3vmin] bottom-[2vmin] animate-bounce'} ${phase === 'paid' ? 'opacity-0 transition-opacity duration-700' : ''}`}
-              style={{ width: 'min(11vmin, 96px)', height: 'min(19vmin, 168px)', touchAction: 'none', cursor: 'grab', transition: phone && !drag.current ? 'left .4s, top .4s' : undefined, ...(phone ? { left: phone.x, top: phone.y } : {}),
+              className={`z-30 ${phone ? 'fixed' : `absolute animate-bounce ${portrait ? 'right-[8vw] bottom-[9vh]' : 'right-[3vmin] bottom-[2vmin]'}`} ${phase === 'paid' ? 'opacity-0 transition-opacity duration-700' : ''}`}
+              style={{ width: portrait ? '15vw' : 'min(11vmin, 96px)', height: portrait ? '26vw' : 'min(19vmin, 168px)', touchAction: 'none', cursor: 'grab', transition: phone && !drag.current ? 'left .4s, top .4s' : undefined, ...(phone ? { left: phone.x, top: phone.y } : {}),
                 filter: 'drop-shadow(0 8px 10px rgba(0,0,0,.35))' }}>
               <PhoneSvg />
             </div>

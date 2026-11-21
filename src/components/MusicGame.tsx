@@ -88,10 +88,13 @@ export const MusicGame: React.FC<{ character: CharacterItem; soundEnabled: boole
   };
 
   const hintOn = useStepHint(`${inst}-${song ?? 'free'}-${hits > 3}`, 2500, 9000, hits < 3 || song !== null);
-  const H = 'min(30vh, 250px)';
+  // телефон вертикально: сцена, под ней кнопки инструментов, внизу крупный инструмент
+  const portrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.2;
+  const H = portrait ? '36vw' : 'min(30vh, 250px)';
+  const U = portrait ? 'vw' : 'vmin';
   return (
     <CookScreen stepKey="music" stepIdx={0} total={0} bg="radial-gradient(circle at 50% 0%, #FDE68A 0%, #FBCFE8 35%, #C4B5FD 70%, #818CF8 100%)">
-      <div className="relative w-full h-full flex flex-col items-center justify-between pt-[1vmin] pb-[2vmin]">
+      <div className={`relative w-full h-full flex flex-col items-center justify-between pb-[2vmin] ${portrait ? 'pt-[10vh]' : 'pt-[1vmin]'}`}>
         {/* сцена с танцующими героями */}
         <div ref={stageRef} className="relative flex items-end justify-center gap-[4vmin]" style={{ height: H }}>
           <div className="absolute -bottom-[1.5vmin] left-[-6vmin] right-[-6vmin] h-[4vmin] rounded-[50%] bg-[#7C3AED]/40 blur-[2px]" />
@@ -114,7 +117,7 @@ export const MusicGame: React.FC<{ character: CharacterItem; soundEnabled: boole
         </div>
 
         {/* инструмент */}
-        <div className="flex items-end gap-[3vmin]">
+        <div className={`flex gap-[3vmin] ${portrait ? 'flex-col-reverse items-center' : 'items-end pr-[min(15vmin,140px)]'}`}>
           {inst === 'xylo' ? (
             <div className="relative" onPointerMove={xyloMove} onPointerUp={() => { lastBar.current = -1; }} style={{ touchAction: 'none' }}>
               <div className="absolute left-[2%] right-[2%] top-[22%] h-[6%] rounded-full bg-[#92400E]" />
@@ -126,7 +129,7 @@ export const MusicGame: React.FC<{ character: CharacterItem; soundEnabled: boole
                     <div key={i} ref={i === (song !== null ? SONG[song] : 0) ? firstRef : undefined} data-bar={i}
                       onPointerDown={(e) => { (e.target as Element).releasePointerCapture?.(e.pointerId); lastBar.current = i; playBar(i, e); }}
                       className={`relative rounded-[1.2rem] flex flex-col justify-between items-center py-[1.4vmin] cursor-pointer transition-transform ${pressed === `b${i}` ? 'scale-95 brightness-110' : ''} ${next ? 'animate-pulse' : ''}`}
-                      style={{ width: 'min(10.5vmin, 90px)', height: `calc(min(40vmin, 330px) * ${1 - i * 0.065})`, background: `linear-gradient(90deg, ${b.c}, ${b.c}cc)`,
+                      style={{ width: portrait ? '10vw' : 'min(10.5vmin, 90px)', height: `calc(${portrait ? '64vw' : 'min(40vmin, 330px)'} * ${1 - i * 0.065})`, background: `linear-gradient(90deg, ${b.c}, ${b.c}cc)`,
                         boxShadow: next ? `0 0 0 6px #fff, 0 0 30px 10px ${b.c}` : '0 6px 0 rgba(0,0,0,.25), inset 0 4px 0 rgba(255,255,255,.4)' }}>
                       <span className="w-[1.6vmin] h-[1.6vmin] rounded-full bg-white/80" />
                       <span className="w-[1.6vmin] h-[1.6vmin] rounded-full bg-white/80" />
@@ -136,11 +139,11 @@ export const MusicGame: React.FC<{ character: CharacterItem; soundEnabled: boole
               </div>
             </div>
           ) : (
-            <div className="relative" style={{ width: 'min(84vmin, 720px)', height: 'min(46vmin, 390px)' }}>
+            <div className="relative" style={portrait ? { width: '96vw', height: '62vw' } : { width: 'min(84vmin, 720px)', height: 'min(46vmin, 390px)' }}>
               {DRUMS.map((d) => (
                 <div key={d.id} role="button" aria-label="барабан" onPointerDown={(e) => playDrum(d, e)}
                   className={`absolute rounded-full cursor-pointer transition-transform ${pressed === d.id ? 'scale-90' : ''}`}
-                  style={{ left: `${d.x}%`, top: `${d.y}%`, width: `min(${d.size}vmin, ${d.size * 8.5}px)`, aspectRatio: '1', transform: `translate(-50%,-50%) ${pressed === d.id ? 'scale(0.9)' : ''}`,
+                  style={{ left: `${d.x}%`, top: `${d.y}%`, width: `min(${portrait ? d.size * 1.12 : d.size}${U}, ${d.size * 8.5}px)`, aspectRatio: '1', transform: `translate(-50%,-50%) ${pressed === d.id ? 'scale(0.9)' : ''}`,
                     background: 'cymbal' in d ? `radial-gradient(circle, #FEF9C3 0 12%, ${d.c1} 13% 70%, ${d.c2} 100%)` : `radial-gradient(circle at 50% 40%, #FFFFFF 0 55%, #E5E7EB 56% 62%, ${d.c1} 63% 85%, ${d.c2} 86%)`,
                     boxShadow: '0 10px 0 rgba(0,0,0,.25), 0 16px 20px rgba(0,0,0,.25)' }}>
                   {d.id === 'tambourine' && [0, 1, 2, 3, 4, 5].map((k) => <span key={k} className="absolute w-[18%] h-[18%] rounded-full bg-[#FDE047] border-2 border-[#CA8A04]" style={{ left: `${41 + 46 * Math.cos(k * 1.05)}%`, top: `${41 + 46 * Math.sin(k * 1.05)}%` }} />)}
@@ -150,19 +153,19 @@ export const MusicGame: React.FC<{ character: CharacterItem; soundEnabled: boole
           )}
 
           {/* выбор инструмента и песенка */}
-          <div className="flex flex-col gap-[2vmin]">
+          <div className={`flex gap-[2vmin] ${portrait ? 'flex-row' : 'flex-col order-first'}`}>
             {(['xylo', 'drums'] as const).map((k) => (
               <button key={k} type="button" aria-label={k === 'xylo' ? 'Ксилофон' : 'Барабаны'}
                 onClick={() => { setInst(k); setSong(null); soundEngine.playGamePop(soundEnabled, 6); if (k === 'drums') playVoice('mu_drums', soundEnabled, undefined, 'replace'); }}
                 className={`rounded-[1.6rem] bg-white flex items-center justify-center transition-transform active:scale-90 ${inst === k ? 'ring-[6px] ring-[#F59E0B] scale-105' : ''}`}
-                style={{ width: 'min(13vmin, 108px)', height: 'min(13vmin, 108px)', fontSize: 'min(7.5vmin, 62px)', boxShadow: '0 6px 0 rgba(0,0,0,.18)' }}>
+                style={{ width: portrait ? '16vw' : 'min(13vmin, 108px)', height: portrait ? '16vw' : 'min(13vmin, 108px)', fontSize: portrait ? '9vw' : 'min(7.5vmin, 62px)', boxShadow: '0 6px 0 rgba(0,0,0,.18)' }}>
                 {k === 'xylo' ? '🎹' : '🥁'}
               </button>
             ))}
             {inst === 'xylo' && (
               <button ref={starRef} type="button" aria-label="Песенка" onClick={() => { setSong(0); soundEngine.playGamePop(soundEnabled, 8); playVoice('mu_song', soundEnabled, undefined, 'replace'); }}
                 className={`rounded-full bg-[#FDE047] flex items-center justify-center transition-transform active:scale-90 ${song !== null ? 'ring-[6px] ring-white' : 'animate-pulse'}`}
-                style={{ width: 'min(13vmin, 108px)', height: 'min(13vmin, 108px)', fontSize: 'min(7.5vmin, 62px)', boxShadow: '0 6px 0 #CA8A04' }}>⭐</button>
+                style={{ width: portrait ? '16vw' : 'min(13vmin, 108px)', height: portrait ? '16vw' : 'min(13vmin, 108px)', fontSize: portrait ? '9vw' : 'min(7.5vmin, 62px)', boxShadow: '0 6px 0 #CA8A04' }}>⭐</button>
             )}
           </div>
         </div>

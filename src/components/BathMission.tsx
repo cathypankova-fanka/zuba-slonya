@@ -68,7 +68,7 @@ export const BathMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   const uid = useRef(0);
   const showerXRef = useRef(0.5);
   const photo = usePhoto(soundEnabled);
-  const S = 'min(50vh, 440px)';
+  const S = 'min(50vh, 440px, calc(100vw - 110px))';
 
   const setS = (s: Spot[]) => { spotsRef.current = s; setSpots(s); };
   const setF = (f: Foam[]) => { foamRef.current = f; setFoam(f); };

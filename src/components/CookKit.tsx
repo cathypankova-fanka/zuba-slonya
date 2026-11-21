@@ -48,7 +48,7 @@ export const CookScreen: React.FC<{
 
       {/* рецепт-образец в углу */}
       {recipe && (
-        <div className="absolute right-3 top-3 sm:right-5 sm:top-5 rounded-full bg-white/95 shadow-xl border-4 border-white flex items-center justify-center overflow-hidden"
+        <div className="cook-recipe absolute right-3 top-3 sm:right-5 sm:top-5 rounded-full bg-white/95 shadow-xl border-4 border-white flex items-center justify-center overflow-hidden"
           style={{ width: 'min(18vmin, 132px)', height: 'min(18vmin, 132px)' }}>
           {recipe}
         </div>
@@ -61,7 +61,7 @@ export const CookScreen: React.FC<{
 
       {/* тарелки с ингредиентами */}
       {tray && (
-        <div key={`tray-${stepKey}`} className={`shrink-0 w-full pb-[max(12px,env(safe-area-inset-bottom))] animate-tray-in ${trayLoop ? '' : 'flex flex-wrap items-end justify-center gap-[1.8vmin] px-[clamp(96px,15vw,160px)]'}`}>
+        <div key={`tray-${stepKey}`} className={`cook-tray shrink-0 w-full pb-[max(12px,env(safe-area-inset-bottom))] animate-tray-in ${trayLoop ? '' : 'flex flex-wrap items-end justify-center gap-[1.8vmin] px-[clamp(96px,15vw,160px)]'}`}>
           {tray}
         </div>
       )}
@@ -151,7 +151,7 @@ export const Plate: React.FC<{
   badge?: number;
   size?: string;
   plateRef?: React.Ref<HTMLButtonElement>;
-}> = ({ src, label, onPick, target, onDrop, selected, dim, wrong, badge, size = 'min(13.5vmin, 120px)', plateRef }) => {
+}> = ({ src, label, onPick, target, onDrop, selected, dim, wrong, badge, size = 'clamp(62px, 13.5vmin, 120px)', plateRef }) => {
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const start = useRef<{ x: number; y: number; moved: boolean; mode?: 'drag' | 'scroll'; lx: number; v: number } | null>(null);
   const loop = React.useContext(LoopCtx);

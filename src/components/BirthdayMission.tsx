@@ -143,7 +143,7 @@ export const BirthdayMission: React.FC<{ character: CharacterItem; soundEnabled:
       : undefined;
 
   const done = BALLOONS.slice(0, bIdx);
-  const friendSize = step === 'party' ? 'min(30vh, 260px)' : 'min(20vh, 170px)';
+  const friendSize = step === 'party' ? 'min(30vh, 260px, 42vw)' : 'min(20vh, 170px, 38vw)';
   const dance = step === 'party' && hasReactionAnim(friend.id, 'dance') ? reactionAnimUrl(friend.id, 'dance') : null;
   const partyHat = <img src="/assets/items/accessories/party_hat.webp" alt="" className="absolute left-1/2 -translate-x-1/2 -top-[26%] w-[42%] pointer-events-none z-10" />;
 

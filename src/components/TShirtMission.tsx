@@ -178,7 +178,7 @@ export const TShirtMission: React.FC<{ character: CharacterItem; soundEnabled: b
               plateRef={(el) => { shirtPlate.current = el; }} target={heroRef} onDrop={wear} onPick={wear} />]
           : undefined;
 
-  const W = step === 'paint' ? 'min(38vh, 340px)' : 'min(44vh, 400px)';
+  const W = step === 'paint' ? 'min(38vh, 340px, calc(100vw - 110px))' : 'min(44vh, 400px, calc(100vw - 110px))';
   const shirtNode = (uid: string, width: string, live = false) => <Shirt uid={uid} color={base ?? '#FFFFFF'} fill={step === 'base' ? fill : 1} width={width} boxRef={live ? shirtRef : undefined} art={art(live)} />;
 
   return (

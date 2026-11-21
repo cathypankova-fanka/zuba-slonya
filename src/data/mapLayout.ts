@@ -4,7 +4,7 @@ import { AllGameMode } from './kitchenData';
 export const WORLD = { w: 9408, h: 3976 };
 
 /** Откуда стартует помощник (ступени замка) */
-export const START_POS = { x: 4700, y: 1760 };
+export const START_POS = { x: 4380, y: 1990 };
 
 export interface MapMarker {
   mode: AllGameMode;

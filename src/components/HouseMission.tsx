@@ -150,14 +150,16 @@ export const HouseMission: React.FC<{ character: CharacterItem; soundEnabled: bo
         ))}</LoopScroller>
       : undefined;
 
-  const R = 'min(56vh, 500px)';
+  const portrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.2;
+  // телефон вертикально: комната квадратная во всю ширину
+  const R = portrait ? 'min(56vh, 500px, calc(100vw - 40px))' : 'min(56vh, 500px, calc((100vw - 40px) * 0.75))';
   const sorted = [...placed].sort((a, b) => (a.item.kind === 'rug' ? -1 : b.item.kind === 'rug' ? 1 : a.item.kind === 'wall' ? -1 : b.item.kind === 'wall' ? 1 : a.y - b.y));
   return (
     <CookScreen stepKey={step} stepIdx={idx} total={STEPS.length} done={doneFx} trayLoop={step === 'furniture' || step === 'toys'}
       bg="radial-gradient(circle at 50% 30%, #FFFDF5 0%, #FDE7C8 60%, #F5C98F 100%)" tray={tray}>
-      <div className="flex items-center gap-[3vmin]">
+      <div className="flex items-center gap-[3vmin] max-sm:portrait:flex-col">
         <div className={`transition-transform duration-500 ${photo.taken ? 'rotate-[-3deg] p-[1.6vmin] pb-[5vmin] bg-white shadow-2xl rounded-lg' : ''}`}>
-          <div ref={roomRef} className="relative overflow-hidden rounded-[1.6rem] shadow-2xl select-none" style={{ height: R, aspectRatio: '4 / 3', touchAction: 'none', border: '8px solid #FFFFFF' }}
+          <div ref={roomRef} className="relative overflow-hidden rounded-[1.6rem] shadow-2xl select-none" style={{ height: R, aspectRatio: portrait ? '1 / 1' : '4 / 3', touchAction: 'none', border: '8px solid #FFFFFF' }}
             onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
             {/* стена и пол */}
             <div className="absolute inset-x-0 top-0 h-[60%] transition-all duration-500" style={{ background: wall.bg }} />
