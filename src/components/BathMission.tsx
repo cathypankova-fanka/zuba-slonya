@@ -5,7 +5,8 @@ import { getWashMessAssetUrl } from '../utils/itemAssets';
 import { sayRandom } from '../utils/voice';
 import { DoneButton, usePhoto } from './ArtKit';
 import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
-import { HeroFace, P, say, useHold, useSteps } from './PlayKit';
+import { BlowBadge, HeroFace, P, say, useHold, useSteps } from './PlayKit';
+import { useBlow } from '../utils/useBlow';
 
 /**
  * Купание: сам пачкаешь друга (грязь, варенье, краска) → выбираешь пену и намыливаешь → бросаешь игрушки в ванну →
@@ -135,6 +136,15 @@ export const BathMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   });
   useEffect(() => { if (shower.holding) { const t = window.setInterval(() => soundEngine.playGamePop(soundEnabled, 1), 240); return () => window.clearInterval(t); } return undefined; }, [shower.holding, soundEnabled]);
 
+  // подуть в микрофон — пена разлетается и тает (в шаге «душ» так тоже можно смыть всю пену)
+  const mic = useBlow((step === 'soap' || step === 'toys' || step === 'shower') && !doneFx, (lv) => {
+    if (finished.current || !foamRef.current.length) return;
+    const n = foamRef.current.map((f) => ({ ...f, y: f.y - lv * 0.012, x: f.x + (f.x - 0.5) * lv * 0.02, o: Math.max(0, f.o - lv * 0.025) }));
+    setF(n);
+    if (Math.random() < 0.08) soundEngine.playGamePop(soundEnabled, 8);
+    if (step === 'shower' && n.every((f) => f.o <= 0.02)) { setS(spotsRef.current.map((x) => ({ ...x, dirt: 0 }))); finished.current = true; next(); }
+  });
+
   // фен
   const dryer = useHold(step === 'dry' && !doneFx, (dt) => {
     if (finished.current) return;
@@ -250,6 +260,7 @@ export const BathMission: React.FC<{ character: CharacterItem; soundEnabled: boo
         </div>
         <div className="flex flex-col items-center gap-[3vmin]" style={{ width: 'min(16vmin, 130px)' }}>
           {(step === 'dirty' || step === 'soap' || step === 'toys') && <DoneButton ref={doneRef} show={ready} onClick={goNext} />}
+          {(step === 'soap' || step === 'toys' || step === 'shower') && <BlowBadge status={mic.status} level={mic.level} />}
           {step === 'dry' && (
             <button ref={dryerRef} type="button" aria-label="Фен" {...dryer.bind} className="active:scale-95 transition-transform" style={{ ...dryer.bind.style }}>
               <Dryer on={dryer.holding} size="min(18vmin, 150px)" />

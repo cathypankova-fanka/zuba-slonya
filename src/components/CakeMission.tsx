@@ -9,6 +9,8 @@ import { playVoice, whenVoiceIdle } from '../utils/voice';
 import { useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
 import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
+import { BlowBadge } from './PlayKit';
+import { useBlow } from '../utils/useBlow';
 
 const svgUri = (body: string) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>${body}</svg>`);
 const EGG_SRC = svgUri(`<text x='50' y='80' font-size='76' text-anchor='middle'>🥚</text>`);
@@ -390,6 +392,13 @@ export const CakeMission: React.FC<{ character: CharacterItem; soundEnabled: boo
     window.setTimeout(() => { setBlowing(false); goNext(); }, 2600);
   };
 
+  // подуть в микрофон — тоже задувает свечки (если микрофона нет, работает кнопка)
+  const blowAcc = useRef(0);
+  const mic = useBlow(step === 'blow' && !blowing && !doneFx, (lv) => {
+    blowAcc.current += lv;
+    if (blowAcc.current > 8) { blowAcc.current = 0; blow(); }
+  });
+
   // ---------- подсказки-жесты ----------
   const cakeRef = useRef<HTMLDivElement>(null);
   const ovenRef = useRef<HTMLButtonElement>(null);
@@ -515,6 +524,7 @@ export const CakeMission: React.FC<{ character: CharacterItem; soundEnabled: boo
               <button ref={blowRef} type="button" aria-label="Задуть" onClick={blow}
                 className="rounded-full bg-white shadow-xl flex items-center justify-center active:scale-90 transition-transform animate-bounce"
                 style={{ width: 'min(16vmin, 130px)', height: 'min(16vmin, 130px)', fontSize: 'min(10vmin, 84px)' }}>💨</button>
+              <BlowBadge status={mic.status} level={mic.level} />
             </div>
           )}
         </div>

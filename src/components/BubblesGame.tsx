@@ -10,6 +10,8 @@ import {
 } from '../data/miniGamesData';
 import { soundEngine } from '../utils/soundEngine';
 import { sayName } from '../utils/nameVoice';
+import { useBlow } from '../utils/useBlow';
+import { BlowBadge } from './PlayKit';
 import {
   IdleHandPointer,
   LevelStarsBar,
@@ -155,6 +157,9 @@ export const BubblesGame: React.FC<BubblesGameProps> = ({ soundEnabled }) => {
 
   const nextIdRef = useRef(1);
   const spawnAccumRef = useRef(0);
+  // подуть в микрофон — из палочки вылетают новые пузыри
+  const blowRef = useRef({ lv: 0, at: 0, acc: 0 });
+  const mic = useBlow(true, (lv) => { blowRef.current.lv = lv; blowRef.current.at = performance.now(); });
   const streakCountRef = useRef(0);
   const lastPopAtRef = useRef(performance.now());
   const lastDemoPopAtRef = useRef(0);
@@ -459,6 +464,19 @@ export const BubblesGame: React.FC<BubblesGameProps> = ({ soundEnabled }) => {
             spawnAccumRef.current = 0;
             spawnBubble(w, h);
           }
+          // дуют в микрофон — пузыри идут чаще (больше обычного лимита на экране)
+          const bl = blowRef.current;
+          if (now - bl.at < 150 && !rewardTriggeredRef.current) {
+            bl.acc += dt * (2 + bl.lv * 8);
+            while (bl.acc >= 1) {
+              bl.acc -= 1;
+              const c = cfgRef.current;
+              const saved = c.maxOnScreen;
+              c.maxOnScreen = saved + 6;
+              spawnBubble(w, h);
+              c.maxOnScreen = saved;
+            }
+          }
           // Pre-seed at start so stage is never barren
           if (bubblesRef.current.length < 3 && !rewardTriggeredRef.current) {
             spawnBubble(w, h);
@@ -700,6 +718,7 @@ export const BubblesGame: React.FC<BubblesGameProps> = ({ soundEnabled }) => {
 
       {/* Main Canvas Stage */}
       <div ref={wrapRef} className="relative flex-1 w-full min-h-0">
+        <BlowBadge status={mic.status} level={mic.level} className="absolute left-3 bottom-3 z-20" />
         <canvas
           ref={canvasRef}
           onPointerDown={(e) => {

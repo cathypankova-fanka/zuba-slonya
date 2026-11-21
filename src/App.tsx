@@ -137,7 +137,7 @@ const MODE_TITLES: Record<AllGameMode, string> = {
   sandwich: 'Бутерброд',
   cake: 'Торт',
   feed: 'Покорми',
-  shadow: 'Найди тень',
+  shadow: 'Магазин',
   bubbles: 'Пузыри',
   memory: 'Найди пару',
   puzzle: 'Пазл',

@@ -67,6 +67,9 @@ export function whenVoiceIdle(cb: () => void): void {
   else idleCbs.push(cb);
 }
 
+/** Помощник сейчас говорит (нужно, чтобы микрофон не принял его голос за «дуновение»). */
+export const isVoicePlaying = () => playing;
+
 export function stopVoice(): void {
   current?.pause();
   current = null;

@@ -29,7 +29,7 @@ export const MAP_MARKERS: MapMarker[] = [
   { mode: 'wash', img: 'wash', aria: 'Купание', x: 5900, y: 750 },
   { mode: 'face', img: 'face', aria: 'Волшебное зеркало', x: 5950, y: 1350 },
   // Сад
-  { mode: 'shadow', img: 'shadow', aria: 'Найди тень', x: 2450, y: 1950 },
+  { mode: 'shadow', img: 'shadow', aria: 'Магазин', x: 2450, y: 1950 },
   { mode: 'bubbles', img: 'bubbles', aria: 'Пузыри', x: 2850, y: 1350 },
   { mode: 'weather', img: 'weather', aria: 'По погоде', x: 2250, y: 2500 },
   // Площадка

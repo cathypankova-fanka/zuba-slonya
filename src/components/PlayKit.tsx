@@ -262,3 +262,14 @@ export const FriendVisit: React.FC<{ exceptId?: string; soundEnabled: boolean; c
     </div>
   );
 };
+
+/** Значок «подуй!»: микрофон с ветерком, растёт, когда ребёнок дует. Показывается, только если микрофон работает. */
+export const BlowBadge: React.FC<{ status: string; level: number; className?: string; style?: React.CSSProperties }> = ({ status, level, className = '', style }) => {
+  if (status !== 'on') return null;
+  return (
+    <div className={`pointer-events-none flex items-center justify-center rounded-full bg-white/90 shadow-xl ${className}`}
+      style={{ width: 'min(13vmin, 104px)', height: 'min(13vmin, 104px)', transform: `scale(${1 + level * 0.5})`, transition: 'transform .1s', boxShadow: level > 0 ? `0 0 0 ${6 + level * 14}px rgba(56,189,248,.35)` : undefined, ...style }}>
+      <span style={{ fontSize: 'min(7vmin, 56px)' }} className={level > 0 ? 'animate-[wiggle_0.3s_infinite]' : 'animate-pulse'}>🌬️</span>
+    </div>
+  );
+};

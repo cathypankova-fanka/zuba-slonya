@@ -5,9 +5,11 @@ import { getSoupBaseAssetUrl, getSoupIngredientAssetUrl } from '../utils/itemAss
 import { pickReaction } from '../data/reactions';
 import { ReactionHero } from './ReactionHero';
 import { soundEngine } from '../utils/soundEngine';
+import { useBlow } from '../utils/useBlow';
 import { playVoice, sayRandom, whenVoiceIdle } from '../utils/voice';
 import { useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
+import { BlowBadge } from './PlayKit';
 import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
 
 interface Recipe { id: string; broth: string; color: string; items: SoupIngredientId[]; toppings: SoupIngredientId[] }
@@ -145,7 +147,7 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
 
   const dishUrl = getSoupBaseAssetUrl(recipe.broth) ?? undefined;
   const potSize = 'min(64vmin, 560px)';
-  const restart = () => { setIdx(0); setBasket([]); setCuts({}); setInPot([]); setTurns(0); setTasted(false); setTops([]); };
+  const restart = () => { setIdx(0); setBasket([]); setCuts({}); setInPot([]); setTurns(0); setTasted(false); setTops([]); setHeat(1); cooled.current = false; };
 
   // ---------- действия ----------
   const pantryPick = (id: SoupIngredientId) => {
@@ -167,11 +169,23 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
     soundEngine.playGamePop(soundEnabled, 6);
     setTops((t) => [...t, id]);
   };
+  // попробовали — горячо! Теперь остужаем: дуть в микрофон или нажимать на 💨
+  const [heat, setHeat] = useState(1);
+  const cooled = useRef(false);
+  const cool = (amount: number) => {
+    if (!tasted || cooled.current) return;
+    setHeat((h) => {
+      const n = Math.max(0, h - amount);
+      if (n <= 0 && !cooled.current) { cooled.current = true; soundEngine.playGameOk(soundEnabled); window.setTimeout(() => next('sm_cool_ok'), 300); }
+      return n;
+    });
+  };
   const taste = () => {
     if (tasted) return;
     setTasted(true); soundEngine.playGameOk(soundEnabled); say('sm_hot', soundEnabled);
-    window.setTimeout(() => next(), 2000);
+    window.setTimeout(() => say('blow_soup', soundEnabled), 300);
   };
+  const mic = useBlow(step === 'taste' && tasted && !doneFx, (lv) => cool(lv * 0.03));
 
   // ---------- подсказки-жесты ----------
   const centerRef = useRef<HTMLDivElement>(null);
@@ -282,7 +296,7 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
         <div className="flex items-center gap-[4vmin]">
           <div ref={(el) => { potRef.current = el; centerRef.current = el; }} className="relative" style={{ touchAction: 'none' }}
             onPointerDown={step === 'stir' ? sDown : undefined} onPointerMove={sMove} onPointerUp={sUp} onPointerCancel={sUp}>
-            <Pot broth={recipe.broth} filled={idx >= 3} items={inPot} turn={turns} hot={step !== 'pot' || inPot.length > 0} size={potSize}>
+            <Pot broth={recipe.broth} filled={idx >= 3} items={inPot} turn={turns} hot={(step !== 'pot' || inPot.length > 0) && !(step === 'taste' && tasted && heat < 0.2)} size={potSize}>
               {step === 'stir' && (
                 <img src={S2('ladle')} alt="" draggable={false} className="absolute w-[34%] pointer-events-none drop-shadow-lg" style={{ left: `${30 + 14 * Math.cos(turns * 6.28)}%`, top: `${-4 + 6 * Math.sin(turns * 6.28)}%`, transform: 'rotate(28deg)', transformOrigin: '30% 80%' }} />
               )}
@@ -298,7 +312,18 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
               <button ref={spoonRef} type="button" aria-label="Попробовать" onClick={taste}
                 className="rounded-full bg-white shadow-xl flex items-center justify-center active:scale-90 transition-transform"
                 style={{ width: 'min(22vmin, 180px)', height: 'min(22vmin, 180px)', fontSize: 'min(13vmin, 110px)' }}>{tasted ? '🥵' : '🥄'}</button>
-              {tasted && <div className="text-[10vmin] animate-bounce">💨</div>}
+              {tasted && (
+                <>
+                  <button type="button" aria-label="Подуть" onClick={() => { soundEngine.playGamePop(soundEnabled, 9); cool(0.25); }}
+                    className="rounded-full bg-white/90 shadow-xl flex items-center justify-center active:scale-90 transition-transform animate-bounce"
+                    style={{ width: 'min(15vmin, 120px)', height: 'min(15vmin, 120px)', fontSize: 'min(9vmin, 72px)' }}>💨</button>
+                  {/* градусник: красный столбик опускается */}
+                  <div className="relative rounded-full bg-white shadow-inner overflow-hidden border-4 border-white" style={{ width: 'min(5vmin, 40px)', height: 'min(22vmin, 180px)' }}>
+                    <div className="absolute bottom-0 left-0 right-0 rounded-full transition-all duration-200" style={{ height: `${15 + heat * 85}%`, background: heat > 0.5 ? '#EF4444' : heat > 0.15 ? '#F59E0B' : '#38BDF8' }} />
+                  </div>
+                  <BlowBadge status={mic.status} level={mic.level} />
+                </>
+              )}
             </div>
           )}
         </div>

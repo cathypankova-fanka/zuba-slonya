@@ -17,10 +17,11 @@ import { TraceGame } from './TraceGame';
 import { FaceMission } from './FaceMission';
 import { TShirtMission } from './TShirtMission';
 import { BathMission } from './BathMission';
+import { ShopMission } from './ShopMission';
 import { FriendVisit } from './PlayKit';
 
 /** Старые режимы, переделанные в пошаговые миссии. */
-export const REMADE_MODES: string[] = ['face', 'tshirt', 'wash'];
+export const REMADE_MODES: string[] = ['face', 'tshirt', 'wash', 'shadow'];
 
 /** Маршрутизатор новых мини-игр. */
 export const PlayRouter: React.FC<{ mode: PlayMode | string; character: CharacterItem; soundEnabled: boolean }> = ({ mode, character, soundEnabled }) => {
@@ -40,6 +41,7 @@ export const PlayRouter: React.FC<{ mode: PlayMode | string; character: Characte
     case 'phone': return <PhoneGame {...p} />;
     case 'numbers': return <TraceGame key="n" kind="numbers" soundEnabled={soundEnabled} />;
     case 'letters': return <TraceGame key="l" kind="letters" soundEnabled={soundEnabled} />;
+    case 'shadow': return <ShopMission {...p} />;
     case 'face': return <FaceMission {...p} />;
     case 'tshirt': return <TShirtMission {...p} />;
     case 'wash': return <FriendVisit exceptId={character.id} soundEnabled={soundEnabled}>{(f, nr) => <BathMission character={f} soundEnabled={soundEnabled} onNewRound={nr} />}</FriendVisit>;
