@@ -181,8 +181,13 @@ export const MapHub: React.FC<MapHubProps> = ({
     if (suppressClick.current || walking || picking) return;
     onTap?.(3);
     playVoice(`go_${m.mode}_${(PLAY_MODES as string[]).includes(m.mode) ? 1 : pickGoVariant()}`, voiceEnabled);
-    const dx = m.x - helper.x;
-    const dy = m.y + 120 - helper.y;
+    // встаём рядом со значком (с той стороны, откуда пришли), чтобы значок оставался свободным и в игру можно было вернуться
+    const side = helper.x > m.x ? 1 : -1;
+    let tx = m.x + side * 330;
+    if (tx < 200 || tx > WORLD.w - 200) tx = m.x - side * 330;
+    const target = { x: tx, y: m.y + 130 };
+    const dx = target.x - helper.x;
+    const dy = target.y - helper.y;
     const dist = Math.hypot(dx, dy);
     const ms = clamp((dist / 750) * 1000, 2400, 3400);
     const style = TRAVEL_STYLES[Math.floor(Math.random() * TRAVEL_STYLES.length)];
@@ -191,8 +196,8 @@ export const MapHub: React.FC<MapHubProps> = ({
     setShowHint(false);
     setCamSmooth(true);
     setCam(centerOn(m.x, m.y, scale, view.w, view.h));
-    setHelper({ x: m.x, y: m.y + 120 });
-    lastHelperPos = { x: m.x, y: m.y + 120 };
+    setHelper(target);
+    lastHelperPos = target;
     // по пути — смайлики за помощником
     const steps = Math.max(2, Math.round(ms / 500));
     for (let i = 1; i <= steps; i++) {
