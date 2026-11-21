@@ -43,20 +43,26 @@ interface Blob { x: number; y: number; r: number }
 interface Top { id: string; x: number; y: number; rot: number; k: number }
 
 /** Тарелка пасты: тарелка, горка спагетти, пятна соуса, украшения. Координаты — доли коробки. */
-const PastaDish: React.FC<{ width: string; sauce?: Recipe; blobs: Blob[] | 'full'; tops: Top[]; pasta?: boolean; boxRef?: React.Ref<HTMLDivElement>; className?: string } & React.HTMLAttributes<HTMLDivElement>> =
-  ({ width, sauce, blobs, tops, pasta = true, boxRef, className = '', style, ...rest }) => (
+const PastaDish: React.FC<{ width: string; children?: React.ReactNode; sauce?: Recipe; blobs: Blob[] | 'full'; tops: Top[]; pasta?: boolean; boxRef?: React.Ref<HTMLDivElement>; className?: string } & React.HTMLAttributes<HTMLDivElement>> =
+  ({ width, children, sauce, blobs, tops, pasta = true, boxRef, className = '', style, ...rest }) => (
     <div ref={boxRef} className={`relative shrink-0 ${className}`} style={{ width, height: `calc(${width} * 0.66)`, ...style }} {...rest}>
       {/* тарелка (рисуем сами — без тени-ореола) */}
       <div className="absolute left-0 right-0 bottom-[2%] h-[62%] rounded-[50%] pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 45%, #FFFFFF 0 52%, #EEF0F3 58%, #FFFFFF 66%, #E3E6EA 100%)', boxShadow: '0 10px 18px rgba(0,0,0,.22)' }} />
       {pasta && <img src={P('spaghetti')} alt="" draggable={false} className="absolute pointer-events-none animate-pop-in" style={{ left: '15%', width: '70%', top: '6%' }} />}
       {sauce && (
-        <div className="absolute pointer-events-none" style={{ left: '17%', width: '66%', top: '8%', height: '58%', borderRadius: '50%', overflow: 'hidden' }}>
+        <div className="absolute pointer-events-none" style={{ left: '19%', width: '62%', top: '5%', height: '48%', borderRadius: '50% 50% 44% 44% / 62% 62% 38% 38%', overflow: 'hidden', mixBlendMode: sauce.id === 'cream' ? 'normal' : 'multiply', opacity: sauce.id === 'cream' ? 0.8 : 1 }}>
           {(blobs === 'full' ? FULL : blobs).map((b, i) => (
-              <span key={i} className="absolute rounded-full" style={{
-                left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.r * 100}%`, aspectRatio: '1', transform: 'translate(-50%,-50%)',
-                background: `radial-gradient(circle at 40% 35%, ${sauce.color}, ${sauce.dark} 80%, transparent 82%)`, opacity: 0.92,
-              }} />
+              <span key={i} className="absolute" style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.r * 100}%`, aspectRatio: '1', transform: 'translate(-50%,-50%)' }}>
+                <span className="block w-full h-full rounded-full" style={{
+                  background: `radial-gradient(circle at 38% 32%, ${sauce.color}, ${sauce.dark} 78%, transparent 82%)`, opacity: 0.92,
+                  animation: blobs === 'full' ? undefined : 'sauce-spread .6s ease-out both',
+                }} />
+              </span>
             ))}
+          {/* блики на соусе */}
+          {blobs === 'full' && [[34, 26, 16], [58, 20, 10], [46, 44, 8]].map(([x, y, w], k) => (
+            <span key={`g${k}`} className="absolute rounded-[50%] bg-white" style={{ left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${w * 0.45}%`, opacity: 0.35, transform: 'rotate(-18deg)' }} />
+          ))}
         </div>
       )}
       {tops.map((t, i) => (
@@ -64,6 +70,7 @@ const PastaDish: React.FC<{ width: string; sauce?: Recipe; blobs: Blob[] | 'full
           <img src={ing(t.id).src} alt="" draggable={false} className="w-full animate-pop-in drop-shadow" />
         </span>
       ))}
+      {children}
     </div>
   );
 
@@ -80,12 +87,14 @@ const FULL: Blob[] = CELLS.map(([x, y], i) => ({ x: 0.5 + (x - 0.5) * 0.78 + ((i
 export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: boolean }> = ({ character, soundEnabled }) => {
   const { idx, step, doneFx, next, restart: restartSteps } = useSteps(STEPS, soundEnabled, VOICES);
   const [recipe, setRecipe] = useState<Recipe>(RECIPES[0]);
-  const [fire, setFire] = useState(false);
-  const [inPot, setInPot] = useState(false);
-  const [cook, setCook] = useState(0);
+  // dev ?step=…: состояние как будто предыдущие шаги уже пройдены
+  const s0 = useRef(STEPS.indexOf(step)).current;
+  const [fire, setFire] = useState(s0 > 1);
+  const [inPot, setInPot] = useState(s0 > 2);
+  const [cook, setCook] = useState(s0 > 3 ? 1 : 0);
   const [spoon, setSpoon] = useState<{ x: number; y: number } | null>(null);
-  const [drained, setDrained] = useState(false);
-  const [inPan, setInPan] = useState<string[]>([]);
+  const [drained, setDrained] = useState(s0 > 4);
+  const [inPan, setInPan] = useState<string[]>(s0 > 5 ? RECIPES[0].items : []);
   const [blobs, setBlobs] = useState<Blob[]>([]);
   const [tops, setTops] = useState<Top[]>([]);
   const [wrong, setWrong] = useState<string | null>(null);
@@ -99,7 +108,8 @@ export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
   const doneRef = useRef<HTMLButtonElement>(null);
   const plateEls = useRef<Record<string, HTMLButtonElement | null>>({});
   const hit = useRef<Set<number>>(new Set());
-  const [cover, setCover] = useState(0);
+  const [cover, setCover] = useState(s0 > 6 ? 1 : 0);
+  const [pourAt, setPourAt] = useState<{ x: number; y: number } | null>(null);
 
   const restart = () => {
     setFire(false); setInPot(false); setCook(0); setDrained(false); setInPan([]); setBlobs([]); setTops([]); setCover(0); hit.current = new Set();
@@ -125,7 +135,7 @@ export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
     soundEngine.playGamePop(soundEnabled, 1);
     setDrained(true);
     window.setTimeout(() => soundEngine.playGamePop(soundEnabled, 5), 500);
-    window.setTimeout(() => next(), 1500);
+    window.setTimeout(() => next(), 2600);
   };
   const addToPan = (id: string) => {
     if (doneFx || inPan.includes(id)) return;
@@ -135,17 +145,18 @@ export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
     if (recipe.items.every((x) => n.includes(x))) window.setTimeout(() => next(), 900);
   };
   const pourRub = useRub(step === 'pour' && !doneFx, (_d, p) => {
-    // точка в коробке тарелки → в коробку соуса (left 17% w 66%, top 8% h 58%)
-    const sx = (p.x - 0.17) / 0.66, sy = (p.y - 0.08) / 0.58;
+    setPourAt(p);
+    // точка в коробке тарелки → в коробку соуса (left 20% w 60%, top 4% h 52%)
+    const sx = (p.x - 0.19) / 0.62, sy = (p.y - 0.05) / 0.48;
     if (sx < -0.05 || sx > 1.05 || sy < -0.05 || sy > 1.05) return;
     setBlobs((b) => (b.length > 90 ? b : [...b, { x: sx, y: sy, r: 0.2 + Math.random() * 0.08 }]));
     let added = 0;
-    CELLS.forEach(([cx, cy], i) => { if (!hit.current.has(i) && Math.hypot(cx - sx, (cy - sy) * 0.6) < 0.16) { hit.current.add(i); added++; } });
+    CELLS.forEach(([cx, cy], i) => { if (!hit.current.has(i) && Math.hypot(cx - sx, (cy - sy) * 0.6) < 0.12) { hit.current.add(i); added++; } });
     if (added) {
       soundEngine.playGamePop(soundEnabled, 3 + (hit.current.size % 5));
       const v = hit.current.size / CELLS.length;
       setCover(v);
-      if (v >= 0.75 && v - added / CELLS.length < 0.75) window.setTimeout(() => { setCover(1); next(); }, 400);
+      if (v >= 0.85 && v - added / CELLS.length < 0.85) window.setTimeout(() => { setCover(1); next(); }, 400);
     }
   });
   const addTop = (id: string, at?: { x: number; y: number }) => {
@@ -218,24 +229,48 @@ export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
     </div>
   );
 
+  /** пучок сухих спагетти: торчит из воды веером и мягчает (изгибается и тонет) по мере варки */
+  const fan = [-16, 4, 22];
   const pot = (
     <div ref={potRef} className="relative w-[78%]">
     <div {...(step === 'stir' ? stirRub : {})} className="relative w-full" style={{ touchAction: 'none' }}>
-      <img src="/assets/items/soup2/pot_open.webp" alt="" draggable={false} className={`w-full pointer-events-none ${step === 'stir' && cook > 0 && cook < 1 ? 'animate-[wiggle_0.6s_infinite]' : ''}`} />
+      {/* пар над кастрюлей */}
+      {boiling && [0, 1, 2].map((k) => (
+        <img key={`st${k}`} src="/assets/items/soup2/steam.webp" alt="" className="absolute w-[42%] pointer-events-none"
+          style={{ left: `${12 + k * 22}%`, top: '-42%', animation: `steam-rise 2.4s ease-out ${k * 0.8}s infinite`, opacity: 0 }} />
+      ))}
+      <img src="/assets/items/soup2/pot_open.webp" alt="" draggable={false} className={`relative w-full pointer-events-none ${step === 'stir' && cook > 0 && cook < 1 ? 'animate-[wiggle_0.6s_infinite]' : ''}`} />
       {/* водичка */}
-      <div className="absolute pointer-events-none overflow-hidden rounded-[50%]" style={{ left: '14%', width: '72%', top: '17%', height: '30%', background: 'radial-gradient(circle at 50% 40%, #CFEFFF, #7CC6F0 70%, #4FA6DA)' }}>
-        {boiling && Array.from({ length: 9 }).map((_, i) => (
-          <span key={i} className="absolute rounded-full bg-white/80 animate-[pop-in_0.9s_ease-out_infinite]" style={{ left: `${10 + (i * 37) % 78}%`, top: `${20 + (i * 23) % 55}%`, width: '9%', aspectRatio: '1', animationDelay: `${(i * 0.17) % 0.9}s` }} />
+      <div className="absolute pointer-events-none overflow-hidden rounded-[50%]" style={{ left: '13%', width: '74%', top: '15%', height: '32%', background: 'radial-gradient(ellipse at 50% 40%, #E3F6FF, #8ED0F4 60%, #4FA6DA)', boxShadow: 'inset 0 6px 10px rgba(255,255,255,.7)' }}>
+        {boiling && Array.from({ length: 14 }).map((_, i) => (
+          <span key={i} className="absolute rounded-full border-2 border-white/90 bg-white/40"
+            style={{ left: `${6 + (i * 37) % 84}%`, top: `${14 + (i * 23) % 66}%`, width: `${6 + (i % 3) * 3}%`, aspectRatio: '1', animation: `bubble-pop ${0.7 + (i % 4) * 0.2}s ease-out ${(i * 0.13) % 0.9}s infinite` }} />
         ))}
-        {inPot && (cook < 0.5
-          ? <img src={P('spaghetti_dry')} alt="" className="absolute left-1/2 top-[-60%] w-[28%]" style={{ transform: `translateX(-50%) rotate(${12 + cook * 120}deg)` }} />
-          : <img src={P('spaghetti')} alt="" className="absolute left-[8%] w-[84%] top-[2%]" style={{ transform: `rotate(${cook * 360}deg)` }} />)}
+        {/* варёные спагетти кружатся в воде */}
+        {inPot && cook > 0.2 && (
+          <img src={P('spaghetti')} alt="" className="absolute left-[6%] w-[88%] top-[-4%]"
+            style={{ opacity: Math.min(1, (cook - 0.2) * 2.5), transform: `rotate(${cook * 300}deg) scale(${0.7 + cook * 0.3})`, transition: 'transform .15s' }} />
+        )}
       </div>
-      {inPot && cook < 0.5 && <img src={P('spaghetti_dry')} alt="" className="absolute left-[38%] w-[22%] -top-[28%] pointer-events-none" style={{ transform: `rotate(${14 + cook * 70}deg)`, transformOrigin: '50% 100%' }} />}
-      {boiling && <img src="/assets/items/soup2/steam.webp" alt="" className="absolute left-[22%] w-[50%] -top-[34%] opacity-70 pointer-events-none animate-gentle-float" />}
+      {/* горка варёных спагетти поверх воды — хорошо видна */}
+      {inPot && cook >= 0.6 && (
+        <img src={P('spaghetti')} alt="" className="absolute left-[16%] w-[68%] pointer-events-none animate-pop-in" style={{ top: '6%' }} />
+      )}
+      {/* сухой пучок: торчит веером из кастрюли, мягчеет и тонет */}
+      {inPot && cook < 0.6 && (
+        <div className="absolute pointer-events-none" style={{ left: '50%', top: '30%', width: '24%', transform: `translate(-50%, -100%) translateY(${cook * 70}%)`, opacity: 1 - Math.max(0, cook - 0.35) * 4 }}>
+          <div className="relative" style={{ animation: 'drop-in .5s ease-out both' }}>
+          {fan.map((r, k) => (
+            <img key={k} src={P('spaghetti_dry')} alt="" className="absolute left-0 bottom-0 w-full"
+              style={{ transformOrigin: '50% 100%', transform: `rotate(${r * (1 + cook * 4)}deg) skewX(${(k - 1) * cook * 30}deg)`, transition: 'transform .2s' }} />
+          ))}
+          <img src={P('spaghetti_dry')} alt="" className="relative w-full invisible" />
+          </div>
+        </div>
+      )}
       {step === 'stir' && (
         <img src={P('spoon')} alt="" className="absolute w-[34%] pointer-events-none transition-all duration-75"
-          style={{ left: `${(spoon?.x ?? 0.6) * 100}%`, top: `${(spoon?.y ?? 0.25) * 100}%`, transform: 'translate(-30%,-85%) rotate(-20deg)' }} />
+          style={{ left: `${(spoon?.x ?? 0.6) * 100}%`, top: `${(spoon?.y ?? 0.25) * 100}%`, transform: 'translate(-30%,-85%) rotate(-20deg)', zIndex: 3 }} />
       )}
       {step === 'stir' && (
         <div className="absolute left-[15%] right-[15%] -bottom-[10%] h-3 rounded-full bg-white/70 overflow-hidden">
@@ -243,6 +278,16 @@ export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
         </div>
       )}
     </div>
+    </div>
+  );
+
+  const COL = portrait ? 'min(74vw, 32vh)' : 'min(46vmin, 400px)';
+  /** кастрюля с варёными спагетти (для шага «откинуть») */
+  const cookedPot = (empty: boolean) => (
+    <div className="relative w-full">
+      <img src="/assets/items/soup2/pot_open.webp" alt="" draggable={false} className="relative w-full" />
+      <div className="absolute overflow-hidden rounded-[50%]" style={{ left: '13%', width: '74%', top: '15%', height: '32%', background: 'radial-gradient(ellipse at 50% 40%, #E3F6FF, #8ED0F4 60%, #4FA6DA)' }} />
+      <img src={P('spaghetti')} alt="" className="absolute left-[16%] w-[68%]" style={{ top: '6%', opacity: empty ? 0 : 1, transition: 'opacity .3s .5s' }} />
     </div>
   );
 
@@ -276,22 +321,32 @@ export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
       )}
 
       {step === 'drain' && (
-        <div className="relative flex flex-col items-center">
-          <div ref={colanderRef} onClick={drain} className="relative" style={{ width: portrait ? 'min(70vw, 34vh)' : 'min(50vmin, 420px)' }}>
+        <div className="relative flex flex-col items-center" style={{ paddingTop: `calc(${COL} * 0.55)` }}>
+          <div ref={colanderRef} onClick={drain} className="relative cursor-pointer" style={{ width: COL }}>
+            {/* кастрюля: стоит рядом, при «откинуть» наклоняется над дуршлагом */}
+            <button type="button" aria-label="Откинуть спагетти" onClick={(e) => { e.stopPropagation(); drain(); }}
+              className={`absolute ${drained ? '' : 'animate-gentle-float'}`}
+              style={{ width: '62%', left: drained ? '30%' : '58%', top: drained ? '-62%' : '-78%', zIndex: drained ? 1 : 4, transition: 'left .5s, top .5s' }}>
+              <div style={{ transformOrigin: '20% 30%', transform: drained ? 'rotate(-80deg)' : 'rotate(0)', transition: 'transform .55s ease-in' }}>{cookedPot(drained)}</div>
+            </button>
+            {/* струя воды из кастрюли */}
             {drained && (
-              <img src="/assets/items/soup2/pot_open.webp" alt="" className="absolute left-[18%] w-[64%] -top-[70%] pointer-events-none"
-                style={{ transform: 'rotate(-70deg)', transformOrigin: '80% 80%' }} />
+              <span className="absolute pointer-events-none rounded-full" style={{ left: '44%', width: '12%', top: '-32%', height: '52%', background: 'linear-gradient(#8ED0F4cc, #8ED0F466)', animation: 'stream 1.6s ease-in .45s both', zIndex: 2 }} />
             )}
-            {drained && Array.from({ length: 10 }).map((_, i) => (
-              <span key={i} className="absolute w-[3%] h-[14%] rounded-full bg-[#7CC6F0] pointer-events-none animate-[rain-fall_0.6s_linear_infinite]"
-                style={{ left: `${30 + (i * 7) % 40}%`, top: '-10%', animationDelay: `${i * 0.06}s` }} />
+            {/* брызги на дне раковины */}
+            {drained && Array.from({ length: 12 }).map((_, i) => (
+              <span key={`d${i}`} className="absolute rounded-full bg-[#7CC6F0] pointer-events-none"
+                style={{ left: `${28 + (i * 9) % 44}%`, top: `${78 + (i % 3) * 5}%`, width: '2.6%', height: '7%', zIndex: 5, animation: `drip ${0.55 + (i % 4) * 0.12}s ease-in ${0.6 + (i * 0.11) % 0.7}s infinite` }} />
             ))}
-            {drained && <img src={P('spaghetti')} alt="" className="absolute left-[14%] w-[72%] -top-[8%] pointer-events-none animate-pop-in" style={{ animationDelay: '.5s' }} />}
-            <img src={P('colander')} alt="" draggable={false} className="relative w-full pointer-events-none" />
-            {drained && Array.from({ length: 8 }).map((_, i) => (
-              <span key={`d${i}`} className="absolute w-[3%] h-[10%] rounded-full bg-[#7CC6F0] pointer-events-none animate-[rain-fall_0.5s_linear_infinite]"
-                style={{ left: `${25 + (i * 9) % 50}%`, top: '80%', animationDelay: `${i * 0.07}s` }} />
-            ))}
+            {/* лужица под дуршлагом */}
+            {drained && <span className="absolute left-[18%] right-[18%] rounded-[50%] bg-[#8ED0F4]/60 pointer-events-none" style={{ top: '104%', height: '14%', zIndex: 5, animation: 'pop-in .8s ease-out .8s both' }} />}
+            {/* дуршлаг: спагетти лежат в нём, горкой над краем */}
+            <img src={P('colander')} alt="" draggable={false} className="relative w-full pointer-events-none" style={{ zIndex: 2 }} />
+            {drained && (
+              <img src={P('spaghetti')} alt="" className="absolute left-[15%] w-[70%] pointer-events-none" style={{ top: '-30%', zIndex: 3, animation: 'drop-in .55s cubic-bezier(.3,1.4,.5,1) .55s both' }} />
+            )}
+            {/* передний край дуршлага поверх спагетти — они внутри */}
+            {drained && <img src={P('colander')} alt="" draggable={false} className="absolute left-0 top-0 w-full pointer-events-none" style={{ zIndex: 4, clipPath: 'inset(30% 0 0 0)' }} />}
           </div>
         </div>
       )}
@@ -317,12 +372,21 @@ export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
 
       {step === 'pour' && (
         <div className="flex flex-col items-center gap-[3vmin]">
-          <img src={recipe.bowl} alt="" className="w-[min(22vmin,150px)] pointer-events-none animate-gentle-float" />
+          <img src={recipe.bowl} alt="" className="w-[min(22vmin,150px)] pointer-events-none animate-gentle-float" style={{ visibility: pourAt ? 'hidden' : 'visible' }} />
           <PastaDish width={DISH} sauce={recipe} blobs={cover >= 1 ? 'full' : blobs} tops={[]} boxRef={(el: HTMLDivElement | null) => { (pourRub.ref as React.MutableRefObject<HTMLDivElement | null>).current = el; (dishRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}
-            onPointerDown={pourRub.onPointerDown} onPointerMove={pourRub.onPointerMove} onPointerUp={pourRub.onPointerUp} onPointerCancel={pourRub.onPointerCancel}
-            style={{ touchAction: 'none' }} className="cursor-pointer" />
+            onPointerDown={pourRub.onPointerDown} onPointerMove={pourRub.onPointerMove}
+            onPointerUp={() => { pourRub.onPointerUp(); setPourAt(null); }} onPointerCancel={() => { pourRub.onPointerCancel(); setPourAt(null); }}
+            style={{ touchAction: 'none' }} className="cursor-pointer">
+            {/* мисочка с соусом следует за пальцем и льёт струйкой */}
+            {pourAt && cover < 1 && (
+              <span className="absolute pointer-events-none" style={{ left: `${pourAt.x * 100}%`, top: `${pourAt.y * 100}%`, width: '26%', transform: 'translate(-20%, -150%)', zIndex: 5 }}>
+                <span className="absolute rounded-full" style={{ left: '4%', top: '58%', width: '9%', height: '96%', background: `linear-gradient(${recipe.color}, ${recipe.dark})` }} />
+                <img src={recipe.bowl} alt="" className="relative w-full" style={{ transform: 'rotate(-38deg)', transformOrigin: '20% 60%' }} />
+              </span>
+            )}
+          </PastaDish>
           <div className="w-[min(50vw,300px)] h-3 rounded-full bg-white/70 overflow-hidden">
-            <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(1, cover / 0.75) * 100}%`, background: recipe.color }} />
+            <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(1, cover / 0.85) * 100}%`, background: recipe.color }} />
           </div>
         </div>
       )}
