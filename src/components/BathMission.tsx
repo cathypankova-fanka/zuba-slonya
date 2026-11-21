@@ -42,7 +42,7 @@ const Dryer: React.FC<{ on: boolean; size: string }> = ({ on, size }) => (
   </svg>
 );
 
-export const BathMission: React.FC<{ character: CharacterItem; soundEnabled: boolean }> = ({ character, soundEnabled }) => {
+export const BathMission: React.FC<{ character: CharacterItem; soundEnabled: boolean; onNewRound?: () => void }> = ({ character, soundEnabled, onNewRound }) => {
   const { idx, step, doneFx, next, restart: restartSteps } = useSteps(STEPS, soundEnabled, VOICES);
   const [spots, setSpots] = useState<Spot[]>([]);
   const spotsRef = useRef<Spot[]>([]);
@@ -158,7 +158,7 @@ export const BathMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   };
 
   const goNext = () => { if (finished.current || doneFx) return; finished.current = true; next(); };
-  const restart = () => { setS([]); setF([]); setD([]); setToys([]); setDryLeft(1); photo.reset(); setRunKey((k) => k + 1); restartSteps(); };
+  const restart = () => { if (onNewRound) { onNewRound(); return; } setS([]); setF([]); setD([]); setToys([]); setDryLeft(1); photo.reset(); setRunKey((k) => k + 1); restartSteps(); };
 
   const clean = spots.every((s) => s.dirt <= 0);
   const ready = step === 'dirty' ? spots.length >= 3 : step === 'soap' ? clean && foam.length >= 6 : step === 'toys' ? toys.length >= 1 : false;

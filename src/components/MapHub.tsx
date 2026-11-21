@@ -13,6 +13,7 @@ import { MAP_DECOR, MAP_MARKERS, MapMarker, START_POS, WORLD } from '../data/map
 // Помнит, где остановился помощник, чтобы после игры он стоял там же
 let lastHelperPos = { ...START_POS };
 import { HelperId, getActiveHelper } from '../utils/activeHelper';
+import { HeroPicker } from './HeroPicker';
 import { playVoice, sayRandom, whenVoiceIdle } from '../utils/voice';
 
 let greeted = false;
@@ -375,36 +376,30 @@ export const MapHub: React.FC<MapHubProps> = ({
         </div>
       )}
 
+      {/* Гость: всегда в левом нижнем углу, нажми — сменить героя */}
+      {!picking && (
+        <button type="button" aria-label="Сменить героя"
+          onClick={() => { if (walking) return; onTap?.(2); setPicking(true); playVoice('guest_who', voiceEnabled, undefined, 'replace'); }}
+          className="absolute left-3 bottom-3 z-30 rounded-full border-[6px] border-white shadow-[0_8px_14px_rgba(0,0,0,0.35)] active:scale-90 transition-transform"
+          style={{ width: 'min(17vmin, 128px)', height: 'min(17vmin, 128px)', backgroundColor: active.accentBg }}>
+          <img src={active.imageSrc} alt="" draggable={false} className="w-full h-full rounded-full object-cover object-top pointer-events-none" />
+          <span className="absolute -right-2 -top-2 rounded-full bg-[#FF6B4A] text-white flex items-center justify-center shadow-lg"
+            style={{ width: 'min(7.5vmin, 54px)', height: 'min(7.5vmin, 54px)', fontSize: 'min(4.5vmin, 30px)' }}>🔄</span>
+        </button>
+      )}
+
       {/* Выбор героя */}
       {picking && (
         <div
           className="absolute inset-0 z-40 bg-[#2E1A47]/70 backdrop-blur-sm flex items-center justify-center p-3"
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="w-full max-w-[860px] max-h-full overflow-y-auto no-scrollbar bg-[#FFF3E0] rounded-[2rem] p-3 sm:p-5 shadow-2xl border-4 border-white">
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 sm:gap-3.5">
-              {characters.map((c) => {
-                const sel = c.id === selectedCharacterId;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    aria-label={c.name}
-                    onClick={() => {
-                      onSelectCharacter(c);
-                      setPicking(false);
-                    }}
-                    style={{ backgroundColor: c.accentBg }}
-                    className={`aspect-square rounded-3xl overflow-hidden cursor-pointer outline-none transition-transform active:scale-90 ${
-                      sel ? 'ring-[6px] ring-[#FF6B4A] scale-105 shadow-xl' : 'shadow-[0_5px_0_rgba(0,0,0,0.12)]'
-                    }`}
-                  >
-                    <img src={c.imageSrc} alt="" className="w-full h-full object-cover object-top pointer-events-none" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <HeroPicker characters={characters} selectedId={selectedCharacterId} onPick={(c) => {
+            onSelectCharacter(c);
+            playVoice(`hero_${c.id}`, voiceEnabled, undefined, 'replace');
+            addBursts(helper.x + 100, helper.y - 200, ['🎉', '✨', '💫']);
+            window.setTimeout(() => setPicking(false), 450);
+          }} />
           <button
             type="button"
             aria-label="Готово"

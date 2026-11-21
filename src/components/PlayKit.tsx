@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CharacterItem } from '../data/characters';
+import { CHARACTERS as ALL_HEROES, CharacterItem } from '../data/characters';
 import { emotionUrl, hasEmotion } from '../data/emotionAssets';
 import { pickReaction } from '../data/reactions';
 import { soundEngine } from '../utils/soundEngine';
 import { playVoice, sayRandom, whenVoiceIdle } from '../utils/voice';
 import { ReactionHero } from './ReactionHero';
+import { GestureHint } from './CookKit';
 
 /** Общие кирпичики новых мини-игр (милкшейк, блинчики, доктор, садик…). */
 
@@ -208,3 +209,56 @@ export const Stove: React.FC<{ width: string; on?: boolean; burnerX?: number; ch
     {knob && <div className="absolute left-0 right-0 bottom-0 z-20 pointer-events-none [&>*]:pointer-events-auto" style={{ height: `calc(${width} * 0.36)` }}>{knob}</div>}
   </div>
 );
+
+/**
+ * «Тук-тук!»: в начале игры с другом — стучат в дверь, ребёнок открывает её, выглядывает случайный друг и называет себя.
+ * children(friend, newRound) — игра с этим другом; newRound() — следующий раунд с новым другом (снова стук в дверь).
+ */
+export const FriendVisit: React.FC<{ exceptId?: string; soundEnabled: boolean; children: (friend: CharacterItem, newRound: () => void) => React.ReactNode }> = ({ exceptId, soundEnabled, children }) => {
+  const [friend, setFriend] = useState<CharacterItem>(() => randomHero(ALL_HEROES, exceptId));
+  const [round, setRound] = useState(0);
+  const [phase, setPhase] = useState<'knock' | 'open' | 'play'>('knock');
+  const doorRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (phase !== 'knock') return;
+    const knock = () => { soundEngine.playGamePop(soundEnabled, 0); window.setTimeout(() => soundEngine.playGamePop(soundEnabled, 0), 180); };
+    knock();
+    const v = window.setTimeout(() => playVoice('knock', soundEnabled, undefined, 'replace'), 500);
+    const t = window.setInterval(knock, 2600);
+    return () => { window.clearInterval(t); window.clearTimeout(v); };
+  }, [phase, round, soundEnabled]);
+  const open = () => {
+    if (phase !== 'knock') return;
+    setPhase('open');
+    soundEngine.playGameOk(soundEnabled);
+    window.setTimeout(() => playVoice(`hero_${friend.id}`, soundEnabled, undefined, 'replace'), 450);
+    window.setTimeout(() => whenVoiceIdle(() => window.setTimeout(() => setPhase('play'), 500)), 1300);
+  };
+  const newRound = () => { setFriend((f) => randomHero(ALL_HEROES.filter((c) => c.id !== f.id), exceptId)); setRound((r) => r + 1); setPhase('knock'); };
+  if (phase === 'play') return <React.Fragment key={round}>{children(friend, newRound)}</React.Fragment>;
+  const D = 'min(62vh, 480px)';
+  return (
+    <div className="fixed inset-0 z-[25] flex items-center justify-center" style={{ background: 'linear-gradient(#FDE7C8 0%, #F9D9A8 70%, #D9A066 70%, #C08850 100%)' }}>
+      <div className="relative" style={{ height: D, width: `calc(${D} * 0.62)`, perspective: '900px' }}>
+        {/* проём и друг за дверью */}
+        <div className="absolute inset-0 rounded-t-[45%] overflow-hidden" style={{ background: 'radial-gradient(circle at 50% 40%, #FFF7D6, #FCD34D 60%, #F59E0B)', boxShadow: 'inset 0 0 30px rgba(0,0,0,.3)' }}>
+          {phase === 'open' && (
+            <div className="absolute inset-0 flex items-end justify-center pb-[12%] animate-pop-in">
+              <HeroFace hero={friend} emotion="joy" size={`calc(${D} * 0.5)`} className="animate-[bob_1.2s_ease-in-out_infinite]" />
+            </div>
+          )}
+        </div>
+        {/* дверь */}
+        <button ref={doorRef} type="button" aria-label="Дверь" onClick={open}
+          className={`absolute inset-0 rounded-t-[45%] origin-left transition-transform duration-700 ${phase === 'knock' ? 'animate-[wiggle_0.35s_ease-in-out_2]' : ''}`}
+          style={{ transform: phase === 'open' ? 'rotateY(-105deg)' : 'rotateY(0deg)', background: 'linear-gradient(90deg,#B45309,#92400E 50%,#B45309)', border: '8px solid #78350F', boxShadow: '0 20px 30px rgba(0,0,0,.35)' }}>
+          <span className="absolute left-[12%] right-[12%] top-[14%] h-[30%] rounded-t-[40%] border-[6px] border-[#78350F]/60" />
+          <span className="absolute left-[12%] right-[12%] top-[52%] h-[34%] rounded-lg border-[6px] border-[#78350F]/60" />
+          <span className="absolute right-[10%] top-[52%] w-[12%] aspect-square rounded-full bg-[#FCD34D] shadow-md" />
+        </button>
+        {phase === 'knock' && <span className="absolute -right-[30%] top-[10%] text-[8vmin] animate-bounce pointer-events-none">❓</span>}
+      </div>
+      <GestureHint show={phase === 'knock'} kind="tap" target={doorRef} />
+    </div>
+  );
+};

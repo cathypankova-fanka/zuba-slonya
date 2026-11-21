@@ -1592,7 +1592,7 @@ export default function App() {
       )}
 
       {screen === 'play' && <HelperCorner />}
-      {!splashDone && <SplashScreen voiceEnabled={soundEnabled} onDone={() => setSplashDone(true)} />}
+      {!splashDone && <SplashScreen voiceEnabled={soundEnabled} characters={CHARACTERS} selectedCharacterId={activeCharacter.id} onSelectCharacter={handleSelectCharacter} onDone={() => setSplashDone(true)} />}
       {screen === 'menu' ? (
         <MapHub
           characters={CHARACTERS}

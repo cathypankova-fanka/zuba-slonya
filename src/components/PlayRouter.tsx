@@ -17,6 +17,7 @@ import { TraceGame } from './TraceGame';
 import { FaceMission } from './FaceMission';
 import { TShirtMission } from './TShirtMission';
 import { BathMission } from './BathMission';
+import { FriendVisit } from './PlayKit';
 
 /** Старые режимы, переделанные в пошаговые миссии. */
 export const REMADE_MODES: string[] = ['face', 'tshirt', 'wash'];
@@ -31,7 +32,7 @@ export const PlayRouter: React.FC<{ mode: PlayMode | string; character: Characte
     case 'popcorn': return <PopcornMission {...p} />;
     case 'skewers': return <SkewersMission {...p} />;
     case 'picnic': return <PicnicMission {...p} />;
-    case 'bedtime': return <BedtimeMission {...p} />;
+    case 'bedtime': return <FriendVisit exceptId={character.id} soundEnabled={soundEnabled}>{(f, nr) => <BedtimeMission character={f} soundEnabled={soundEnabled} onNewRound={nr} />}</FriendVisit>;
     case 'doctor': return <DoctorMission {...p} />;
     case 'garden': return <GardenMission {...p} />;
     case 'laundry': return <LaundryMission {...p} />;
@@ -41,7 +42,7 @@ export const PlayRouter: React.FC<{ mode: PlayMode | string; character: Characte
     case 'letters': return <TraceGame key="l" kind="letters" soundEnabled={soundEnabled} />;
     case 'face': return <FaceMission {...p} />;
     case 'tshirt': return <TShirtMission {...p} />;
-    case 'wash': return <BathMission {...p} />;
+    case 'wash': return <FriendVisit exceptId={character.id} soundEnabled={soundEnabled}>{(f, nr) => <BathMission character={f} soundEnabled={soundEnabled} onNewRound={nr} />}</FriendVisit>;
     default: return null;
   }
 };

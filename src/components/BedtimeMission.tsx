@@ -10,7 +10,7 @@ const STEPS = ['teeth', 'pajamas', 'book', 'lamp', 'night'] as const;
 const VOICES = { teeth: 'bt_teeth', pajamas: 'bt_pajamas', book: 'bt_book', lamp: 'bt_lamp' };
 const PAGES = [['🐻', '🌲', '🍯'], ['🐰', '🥕', '🌼'], ['🦉', '🌙', '⭐'], ['😴', '💤', '🛏️']];
 
-export const BedtimeMission: React.FC<{ character: CharacterItem; soundEnabled: boolean }> = ({ character, soundEnabled }) => {
+export const BedtimeMission: React.FC<{ character: CharacterItem; soundEnabled: boolean; onNewRound?: () => void }> = ({ character, soundEnabled, onNewRound }) => {
   const { idx, step, doneFx, next, restart: restartSteps } = useSteps(STEPS, soundEnabled, VOICES);
   const [brush, setBrush] = useState(0);
   const [bp, setBp] = useState<{ x: number; y: number } | null>(null);
@@ -22,7 +22,7 @@ export const BedtimeMission: React.FC<{ character: CharacterItem; soundEnabled: 
   const lampRef = useRef<HTMLButtonElement>(null);
   const pjPlate = useRef<HTMLButtonElement | null>(null);
 
-  const restart = () => { setBrush(0); setPj(false); setPage(0); setDark(false); restartSteps(); };
+  const restart = () => { if (onNewRound) { onNewRound(); return; } setBrush(0); setPj(false); setPage(0); setDark(false); restartSteps(); };
 
   const rub = useRub(step === 'teeth' && !doneFx, (d, p) => {
     setBp(p);
