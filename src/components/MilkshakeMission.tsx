@@ -159,7 +159,23 @@ export const MilkshakeMission: React.FC<{ character: CharacterItem; soundEnabled
   const blending = blend.holding;
   const liquid = milk ? 0.32 + inJar.length * 0.1 : 0;
   const mixColor = mix > 0 ? recipe.color : '#FFFDF7';
-  const JAR = 'min(42vmin, 360px)';
+  const portrait = window.innerHeight > window.innerWidth * 1.2;
+  const JAR = portrait ? 'min(58vw, 34vh, 360px)' : 'min(42vmin, 360px)';
+  /** что нужно положить по рецепту: кружочки, положенное — с галочкой */
+  const needRow = (list: { id: string; src: string }[], has: (id: string) => boolean) => (
+    <div className="flex gap-[3vmin] justify-center" aria-hidden>
+      {list.map((it) => {
+        const done = has(it.id);
+        return (
+          <span key={it.id} className={`relative rounded-full bg-white/95 shadow-lg border-4 flex items-center justify-center ${done ? 'border-[#10C97A]' : 'border-[#FFB800] animate-pulse'}`}
+            style={{ width: 'min(17vmin, 100px)', height: 'min(17vmin, 100px)' }}>
+            <img src={it.src} alt="" className="w-[74%] h-[74%] object-contain" />
+            {done && <span className="absolute -right-1 -top-1 w-[40%] h-[40%] rounded-full bg-[#10C97A] text-white font-black flex items-center justify-center text-[min(5vmin,26px)]">✓</span>}
+          </span>
+        );
+      })}
+    </div>
+  );
 
   const blender = (
     <div ref={jarRef} onClick={step === 'pour' ? pour : undefined} className={`relative ${blending ? 'animate-[wiggle_0.15s_infinite]' : ''}`} style={{ width: JAR, height: `calc(${JAR} * 1.375)` }}>
@@ -194,6 +210,8 @@ export const MilkshakeMission: React.FC<{ character: CharacterItem; soundEnabled
       )}
 
       {(step === 'milk' || step === 'fruit' || step === 'lid' || step === 'blend' || step === 'pour') && (
+        <div className="flex flex-col items-center gap-[4vmin]">
+        {step === 'fruit' && needRow(recipe.items.map(item), (id) => inJar.includes(id))}
         <div className="flex items-end gap-[5vmin]">
           <div className="relative flex flex-col items-center">
             {blender}
@@ -214,10 +232,14 @@ export const MilkshakeMission: React.FC<{ character: CharacterItem; soundEnabled
             </div>
           )}
         </div>
+        </div>
       )}
 
       {step === 'top' && (
-        <div ref={glassRef} className="pt-[10vmin]"><ShakeGlass color={recipe.color} level={0.85} tops={tops} size="min(26vmin, 230px)" /></div>
+        <div className="flex flex-col items-center gap-[4vmin]">
+          {needRow(recipe.tops.map(top), (id) => tops.includes(id))}
+          <div ref={glassRef} className="pt-[10vmin]"><ShakeGlass color={recipe.color} level={0.85} tops={tops} size={portrait ? 'min(36vw, 22vh, 230px)' : 'min(26vmin, 230px)'} /></div>
+        </div>
       )}
 
       {step === 'serve' && (

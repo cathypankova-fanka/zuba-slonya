@@ -174,7 +174,8 @@ export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled:
     step === 'top' ? TOPS.map((t) => <Plate key={t.id} src={t.src} label={t.name} plateRef={pRef(t.id)} onPick={() => addTop(t.id)} target={centerRef} onDrop={(x, y) => addTop(t.id, x, y)} />)
     : undefined;
 
-  const BOWL = 'min(56vmin, 480px)';
+  const portrait = window.innerHeight > window.innerWidth * 1.2;
+  const BOWL = portrait ? 'min(80vw, 42vh, 480px)' : 'min(48vmin, 480px)';
   const PAN = 'min(64vmin, 560px)';
   const pancake = (
     <div className="absolute pointer-events-none" style={{ left: '15%', top: '23%', width: '45%', aspectRatio: '1' }}>
@@ -196,6 +197,7 @@ export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled:
       recipe={step !== 'serve' ? <div className="w-[78%]"><Stack n={3} syrup={1} tops={[{ id: 'strawberry', x: 0.4, y: 0.15 }, { id: 'blueberry', x: 0.62, y: 0.2 }]} w="100%" /></div> : undefined}
       tray={tray}>
       {(step === 'mix' || step === 'whisk') && (
+        <div className="flex flex-col items-center gap-[3vmin]" style={{ paddingTop: step === 'mix' ? `calc(${BOWL} * ${portrait ? 0.5 : 0.45})` : undefined }}>
         <div ref={centerRef} {...(step === 'whisk' ? whiskRub : {})} className="relative cursor-pointer" style={{ width: BOWL, height: `calc(${BOWL} * 0.82)`, ...(step === 'whisk' ? whiskRub.style : {}) }}>
           <img src={P('batter')} alt="" draggable={false} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
           {/* до замеса в миске видно продукты, тесто проявляется венчиком */}
@@ -210,7 +212,7 @@ export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled:
           )}
           {step === 'mix' && cur && (
             <div ref={actorRef} {...(cur !== 'egg' ? pourIn.bind : {})} onClick={cur === 'egg' ? tapEgg : undefined}
-              className="absolute cursor-pointer select-none" style={{ right: '-14%', top: '-58%', width: '42%', aspectRatio: '1', ...(cur !== 'egg' ? pourIn.bind.style : {}) }}>
+              className="absolute cursor-pointer select-none" style={portrait ? { right: '4%', top: '-52%', width: '46%', aspectRatio: '1', ...(cur !== 'egg' ? pourIn.bind.style : {}) } : { right: '-14%', top: '-58%', width: '42%', aspectRatio: '1', ...(cur !== 'egg' ? pourIn.bind.style : {}) }}>
               {cur === 'egg' && (
                 <div className={`relative w-full h-full ${eggTaps === 0 ? 'animate-bounce' : ''}`}>
                   <img src={P('egg')} alt="" draggable={false} className="w-full h-full object-contain pointer-events-none" style={{ transform: eggTaps ? 'rotate(-35deg) translate(-10%, 10%)' : undefined, transition: 'transform .3s' }} />
@@ -230,6 +232,21 @@ export const PancakesMission: React.FC<{ character: CharacterItem; soundEnabled:
             </div>
           )}
           {step === 'whisk' && <img src={P('whisk')} alt="" className="absolute w-[30%] pointer-events-none" style={{ left: `${38 + Math.cos(whisk * 30) * 14}%`, top: `${-30 + Math.sin(whisk * 30) * 6}%`, transform: 'rotate(-20deg)' }} />}
+        </div>
+        {step === 'mix' && (
+          <div className="flex gap-[3vmin]" aria-hidden>
+            {INGR.map((i) => {
+              const done = bowl.includes(i.id);
+              return (
+                <span key={i.id} className={`relative rounded-full bg-white/95 shadow-lg border-4 flex items-center justify-center ${done ? 'border-[#10C97A]' : i.id === cur ? 'border-[#FFB800] animate-pulse' : 'border-white opacity-60'}`}
+                  style={{ width: 'min(17vmin, 96px)', height: 'min(17vmin, 96px)' }}>
+                  <img src={i.src} alt="" className="w-[72%] h-[72%] object-contain" />
+                  {done && <span className="absolute -right-1 -top-1 w-[40%] h-[40%] rounded-full bg-[#10C97A] text-white font-black flex items-center justify-center text-[min(5vmin,26px)]">✓</span>}
+                </span>
+              );
+            })}
+          </div>
+        )}
         </div>
       )}
 
