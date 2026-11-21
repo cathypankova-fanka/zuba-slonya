@@ -14,7 +14,12 @@ export const say = (id: string, on: boolean) => playVoice(id, on);
 
 /** Шаги миссии: звезда «готово», фраза договаривается, потом следующий шаг. Фраза шага звучит при входе. */
 export function useSteps<S extends string>(steps: readonly S[], soundEnabled: boolean, voices: Partial<Record<S, string>>) {
-  const [idx, setIdx] = useState(0);
+  // dev: ?step=catch открывает игру сразу на нужном шаге (для проверки вёрстки)
+  const [idx, setIdx] = useState(() => {
+    if (!import.meta.env.DEV) return 0;
+    const k = steps.indexOf(new URLSearchParams(location.search).get('step') as S);
+    return k > 0 ? k : 0;
+  });
   const step = steps[Math.min(idx, steps.length - 1)];
   const [doneFx, setDoneFx] = useState(false);
   const busy = useRef(false);

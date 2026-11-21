@@ -306,9 +306,10 @@ export const RainMission: React.FC<{ character: CharacterItem; soundEnabled: boo
           {drops.filter((q) => !q.caught).map((q) => {
             const y = dropY(q);
             if (y > 1) return null;
-            return <span key={q.id} className="absolute pointer-events-none text-[min(8vmin,56px)]" style={{ left: `${q.x}%`, top: `${8 + y * 80}%`, transform: 'translate(-50%,-50%)' }}>💧</span>;
+            return <span key={q.id} className="absolute pointer-events-none text-[min(8vmin,56px)]" style={{ left: `${q.x}%`, top: `${8 + y * 70}%`, transform: 'translate(-50%,-50%)' }}>💧</span>;
           })}
-          <div ref={bucketRef} className="absolute pointer-events-none" style={{ left: `${bx}%`, bottom: '2%', width: 'min(22vmin, 170px)', transform: 'translateX(-50%)' }}>
+          <div ref={bucketRef} className="absolute pointer-events-none" style={{ left: `${bx}%`, bottom: window.innerHeight > window.innerWidth * 1.2 ? 'max(14vh, calc(env(safe-area-inset-bottom) + 90px))' : 'max(5vh, calc(env(safe-area-inset-bottom) + 36px))', width: 'min(22vmin, 170px)', transform: 'translateX(-50%)' }}>
+            {/* ведёрко поднято над нижней полоской телефона (жест «домой») */}
             <div className="absolute overflow-hidden" style={{ left: '16%', right: '16%', top: '30%', bottom: '10%' }}>
               <div className="absolute inset-x-0 bottom-0 bg-[#38BDF8]/80 transition-all" style={{ height: `${(caught / NEED_DROPS) * 100}%` }} />
             </div>
