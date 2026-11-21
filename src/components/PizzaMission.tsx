@@ -8,7 +8,7 @@ import { soundEngine } from '../utils/soundEngine';
 import { playVoice, sayRandom, whenVoiceIdle } from '../utils/voice';
 import { IdleHandPointer, useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
-import { CookScreen, GestureHint, HintKind, LoopScroller, NeedRow, Plate, useStepHint } from './CookKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, NeedRow, Plate, TopBasket, useStepHint } from './CookKit';
 
 /**
  * Пицца как «миссия» из шагов (картинки, без текста):
@@ -378,12 +378,7 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
       {step === 'gather' && (
         <div className="flex flex-col items-center gap-[3vmin]">
         <NeedRow items={recipe.toppings.map((t) => ({ key: t, src: getPizzaToppingAssetUrl(t), done: basket.includes(t) }))} />
-        <div ref={basketRef} className="relative flex flex-col items-center justify-end" style={{ width: 'min(58vmin, 480px)', height: 'min(44vmin, 360px)' }}>
-          <div className="absolute inset-x-[8%] bottom-[18%] flex flex-wrap justify-center gap-1 z-10">
-            {basket.map((b) => <img key={b} src={getPizzaToppingAssetUrl(b)} alt="" className="w-[22%] object-contain animate-pop-in drop-shadow" />)}
-          </div>
-          <div className="text-[min(40vmin,330px)] leading-none select-none">🧺</div>
-        </div>
+        <TopBasket boxRef={basketRef} size="min(86vw, 72vmin, 560px)" items={basket.map((b) => getPizzaToppingAssetUrl(b))} />
         </div>
       )}
 

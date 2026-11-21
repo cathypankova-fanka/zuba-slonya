@@ -64,6 +64,9 @@ export const MAP_MARKERS: MapMarker[] = [
   { mode: 'pasta', img: 'pasta', aria: 'Паста', x: 5150, y: 2450 },
   { mode: 'rain', img: 'rain', aria: 'Дождик и лужи', x: 8000, y: 3400 },
   { mode: 'burger', img: 'burger', aria: 'Бургер и картошка', x: 6650, y: 2350 },
+  { mode: 'straws', img: 'straws', aria: 'Трубочки', x: 7750, y: 2050 },
+  { mode: 'domino', img: 'domino', aria: 'Домино', x: 3550, y: 3150 },
+  { mode: 'marble', img: 'marble', aria: 'Шарики', x: 3300, y: 1400 },
 ];
 
 export interface MapDecor {

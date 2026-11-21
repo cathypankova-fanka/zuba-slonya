@@ -900,6 +900,50 @@ class ToddlerSoundEngine {
     return true;
   }
 
+  /** Костяшка домино падает: короткий деревянный «тук» (высота растёт с номером). */
+  public playClack(enabled: boolean, step = 0): void {
+    if (!enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const f = 420 * Math.pow(2, (step % 14) / 14);
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(f * 1.6, now);
+    o.frequency.exponentialRampToValueAtTime(f, now + 0.03);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.22, now + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(now); o.stop(now + 0.09);
+  }
+
+  /** Хлюп через трубочку: булькающий звук с вибрато. */
+  public playSlurp(enabled: boolean): void {
+    if (!enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const lfo = ctx.createOscillator();
+    const lg = ctx.createGain();
+    const g = ctx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(180 + Math.random() * 60, now);
+    o.frequency.exponentialRampToValueAtTime(110, now + 0.22);
+    lfo.frequency.setValueAtTime(28, now);
+    lg.gain.setValueAtTime(40, now);
+    lfo.connect(lg); lg.connect(o.frequency);
+    const flt = ctx.createBiquadFilter();
+    flt.type = 'lowpass'; flt.frequency.setValueAtTime(900, now);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.09, now + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+    o.connect(flt); flt.connect(g); g.connect(ctx.destination);
+    o.start(now); lfo.start(now); o.stop(now + 0.26); lfo.stop(now + 0.26);
+  }
+
   /** Пластинка ксилофона: звонкий удар (основной тон + обертон), быстро затухает. */
   public playXylo(enabled: boolean, freq: number): void {
     if (!enabled) return;

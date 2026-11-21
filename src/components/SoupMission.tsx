@@ -10,7 +10,7 @@ import { playVoice, sayRandom, whenVoiceIdle } from '../utils/voice';
 import { useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
 import { BlowBadge } from './PlayKit';
-import { CookScreen, GestureHint, HintKind, LoopScroller, NeedRow, Plate, useStepHint } from './CookKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, NeedRow, Plate, TopBasket, useStepHint } from './CookKit';
 
 interface Recipe { id: string; broth: string; color: string; items: SoupIngredientId[]; toppings: SoupIngredientId[] }
 const RECIPES: Recipe[] = [
@@ -261,12 +261,7 @@ export const SoupMission: React.FC<{ character: CharacterItem; soundEnabled: boo
       {step === 'pantry' && (
         <div className="flex flex-col items-center gap-[3vmin]">
         <NeedRow items={recipe.items.map((x) => ({ key: x, src: ing(x), done: basket.includes(x) }))} />
-        <div ref={centerRef} className="relative flex flex-col items-center justify-end" style={{ width: 'min(58vmin, 480px)', height: 'min(44vmin, 360px)' }}>
-          <div className="absolute inset-x-[8%] bottom-[18%] flex flex-wrap justify-center gap-1 z-10">
-            {basket.map((b) => <img key={b} src={ing(b)} alt="" className="w-[24%] object-contain animate-pop-in drop-shadow" />)}
-          </div>
-          <div className="text-[min(40vmin,330px)] leading-none select-none">🧺</div>
-        </div>
+        <TopBasket boxRef={centerRef} size="min(86vw, 72vmin, 560px)" items={basket.map((b) => ing(b))} />
         </div>
       )}
 

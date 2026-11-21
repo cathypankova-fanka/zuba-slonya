@@ -23,6 +23,9 @@ import { HouseMission } from './HouseMission';
 import { BirthdayMission } from './BirthdayMission';
 import { PastaMission } from './PastaMission';
 import { BurgerMission } from './BurgerMission';
+import { StrawGame } from './StrawGame';
+import { DominoGame } from './DominoGame';
+import { MarbleRun } from './MarbleRun';
 import { RainMission } from './RainMission';
 import { FriendVisit } from './PlayKit';
 
@@ -52,6 +55,9 @@ export const PlayRouter: React.FC<{ mode: PlayMode | string; character: Characte
     case 'birthday': return <BirthdayMission {...p} />;
     case 'pasta': return <PastaMission {...p} />;
     case 'burger': return <BurgerMission {...p} />;
+    case 'straws': return <StrawGame {...p} />;
+    case 'domino': return <DominoGame {...p} />;
+    case 'marble': return <MarbleRun {...p} />;
     case 'rain': return <RainMission {...p} />;
     case 'shadow': return <ShopMission {...p} />;
     case 'face': return <FaceMission {...p} />;

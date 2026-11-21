@@ -440,3 +440,45 @@ export const NeedRow: React.FC<{ items: NeedItem[]; ordered?: boolean; lead?: st
     </div>
   );
 };
+
+// ---------------------------------------------------------------- корзинка (вид сверху)
+
+/** Плетёная корзинка, вид сверху: продукты лежат внутри (обрезаются краем), ручка — дугой поверх. */
+export const TopBasket: React.FC<{ items: string[]; size: string; boxRef?: React.Ref<HTMLDivElement> }> = ({ items, size, boxRef }) => {
+  // места внутри овала (доли), по кругу от центра
+  const SLOTS = [[0.3, 0.26], [0.7, 0.26], [0.5, 0.74], [0.26, 0.7], [0.74, 0.7], [0.5, 0.22], [0.14, 0.48], [0.86, 0.48]];
+  return (
+    <div ref={boxRef} className="relative shrink-0" style={{ width: size, height: `calc(${size} * 0.78)` }}>
+      {/* тень */}
+      <div className="absolute left-[4%] right-[4%] top-[14%] bottom-[-4%] rounded-[50%] bg-black/25 blur-md" />
+      {/* обод из прутьев */}
+      <div className="absolute inset-[6%_2%_2%_2%] rounded-[50%]" style={{
+        background: 'repeating-conic-gradient(from 0deg, #C98A4B 0deg 7deg, #A86A33 7deg 14deg)',
+        boxShadow: 'inset 0 0 0 4px #8A5426, inset 0 -10px 18px rgba(0,0,0,.25)',
+      }} />
+      {/* дно корзинки с плетением */}
+      <div className="absolute rounded-[50%] overflow-hidden" style={{
+        left: '11%', right: '11%', top: '17%', bottom: '12%',
+        background: 'repeating-linear-gradient(90deg, #B97A3E 0 9%, #9A5F2C 9% 11%), #B97A3E',
+        boxShadow: 'inset 0 10px 22px rgba(0,0,0,.45)',
+      }}>
+        <div className="absolute inset-0" style={{ background: 'repeating-linear-gradient(0deg, transparent 0 12%, rgba(90,50,20,.45) 12% 14%)' }} />
+        {/* клетчатая салфетка */}
+        <div className="absolute inset-[8%] rounded-[50%] opacity-90" style={{ background: 'repeating-linear-gradient(0deg, rgba(239,68,68,.55) 0 10%, transparent 10% 20%), repeating-linear-gradient(90deg, rgba(239,68,68,.55) 0 10%, #FFF7ED 10% 20%)' }} />
+        {items.map((src, i) => {
+          const [x, y] = SLOTS[i % SLOTS.length];
+          return (
+            <img key={i} src={src} alt="" draggable={false} className="absolute pointer-events-none"
+              style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: '34%', transform: `translate(-50%,-50%) rotate(${(i * 47) % 50 - 25}deg)`, filter: 'drop-shadow(0 4px 3px rgba(0,0,0,.35))', animation: 'drop-in .45s cubic-bezier(.3,1.4,.5,1) both' }} />
+          );
+        })}
+      </div>
+      {/* ручка дугой (вид сверху — полоска через корзинку) */}
+      <div className="absolute pointer-events-none rounded-full" style={{
+        left: '-2%', right: '-2%', top: '44%', height: '9%',
+        background: 'repeating-linear-gradient(115deg, #C98A4B 0 8px, #9A5F2C 8px 12px)',
+        boxShadow: '0 6px 8px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.3)', opacity: 0.92,
+      }} />
+    </div>
+  );
+};
