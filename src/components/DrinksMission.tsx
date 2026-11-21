@@ -152,7 +152,18 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
   const hintFromRef = useRef<HTMLButtonElement | null>(null);
   const showGesture = useStepHint(`${step}-${bottle ?? ''}`, 2600, 7000, step !== 'serve' && step !== 'pick' && !doneFx && !(step === 'pour' && level > 0.02));
   const topShelf = useMemo(() => DRINK_ADDONS.filter((a) => a.id !== 'ice').sort(() => Math.random() - 0.5), [recipe]);
-  const catFlavors = useMemo(() => DRINK_FLAVORS.filter((f) => f.category === recipe.category).sort(() => Math.random() - 0.5), [recipe]);
+  // бутылочки на полке: нужная + 3 заметно других цветов (похожие коричневые не различить)
+  const catFlavors = useMemo(() => {
+    const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const far = (a: string, b: string) => { const x = rgb(a), y = rgb(b); return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]) > 110; };
+    const right = flavorOf(recipe.flavor);
+    const picked = [right];
+    for (const f of [...DRINK_FLAVORS].sort(() => Math.random() - 0.5)) {
+      if (picked.length >= 4) break;
+      if (picked.every((p) => far(p.liquidBottom, f.liquidBottom))) picked.push(f);
+    }
+    return picked.sort(() => Math.random() - 0.5);
+  }, [recipe]);
   const nextTop = recipe.tops.find((t) => !tops.includes(t));
 
   let hintKind: HintKind = 'drag';
@@ -187,6 +198,30 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
 
   const recipeImg = getDrinkRecipeAssetUrl(recipe.flavor) ?? undefined;
 
+  /** «Что нужно» над сценой: картинка напитка-образца и кружочки нужных вещей (положенное — с галочкой). */
+  const circle = (key: string, src: string, done: boolean) => (
+    <span key={key} className={`relative rounded-full bg-white/95 shadow-lg border-4 flex items-center justify-center shrink-0 ${done ? 'border-[#10C97A]' : 'border-[#FFB800] animate-pulse'}`}
+      style={{ width: 'min(17vmin, 100px)', height: 'min(17vmin, 100px)' }}>
+      <img src={src} alt="" className="w-[74%] h-[74%] object-contain" />
+      {done && <span className="absolute -right-1 -top-1 w-[40%] h-[40%] rounded-full bg-[#10C97A] text-white font-black flex items-center justify-center text-[min(5vmin,26px)]">✓</span>}
+    </span>
+  );
+  const needItems =
+    step === 'glass' ? [circle('v', VESSELS.find((v) => v.id === vesselOf(recipe.category))!.src, !!vessel)]
+    : step === 'pour' ? [circle('b', bottleSrc(flavorOf(recipe.flavor).liquidBottom), !!bottle)]
+    : step === 'ice' ? [...Array(ICE_N)].map((_, k) => circle(`i${k}`, getDrinkExtraAssetUrl('ice'), k < ice))
+    : step === 'top' ? recipe.tops.map((t) => circle(t, getDrinkExtraAssetUrl(t), tops.includes(t)))
+    : null;
+  const needRow = needItems && (
+    <div className="flex items-center justify-center gap-[2.5vmin] shrink-0" aria-hidden>
+      <span className="rounded-full bg-white/95 shadow-lg border-4 border-white flex items-center justify-center shrink-0" style={{ width: 'min(20vmin, 120px)', height: 'min(20vmin, 120px)' }}>
+        <img src={recipeImg} alt="" className="w-[84%] h-[84%] object-contain" />
+      </span>
+      <span className="text-[min(8vmin,44px)] font-black text-white drop-shadow">=</span>
+      {needItems}
+    </div>
+  );
+
   return (
     <CookScreen stepKey={step} stepIdx={idx} total={steps.length} done={doneFx} trayLoop={step === 'top'}
       recipe={step !== 'pick' && step !== 'serve' ? <img src={recipeImg} alt="" className="w-[80%] h-[80%] object-contain" /> : undefined}
@@ -203,6 +238,8 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
         </div>
       )}
 
+      {(needRow || step === 'stir') ? <div className="flex flex-col items-center gap-[3vmin] min-h-0">
+      {needRow}
       {step === 'glass' && (
         <div ref={centerRef} className="rounded-full bg-white/45 border-[6px] border-dashed border-[#FFB800] flex items-center justify-center"
           style={{ width: 'min(52vmin, 460px)', height: 'min(52vmin, 460px)' }}>
@@ -214,7 +251,7 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
       {(step === 'pour' || step === 'ice' || step === 'stir' || step === 'top') && (
         <div ref={centerRef} className="relative"
           onPointerDown={stirDown} onPointerMove={stirMove} onPointerUp={stirUp} onPointerCancel={stirUp}
-          style={{ width: 'min(96vmin, 860px)', height: 'min(72vmin, 640px)', touchAction: 'none' }}>
+          style={{ width: 'min(96vmin, 860px)', height: 'min(72vmin, 640px, calc(100dvh - 340px))', touchAction: 'none' }}>
           <DrinksPourCanvas drink={drink} soundEnabled={soundEnabled} isCarryingDish={false} isCrumbsPhase={false}
             minimal zoom={1.25} canPour={step === 'pour' && !!bottle && !doneFx}
             onSetPourLevel={setLevel} onStirDrink={() => setStirAngle((x) => x + 1)}
@@ -226,6 +263,7 @@ export const DrinksMission: React.FC<{ character: CharacterItem; soundEnabled: b
           )}
         </div>
       )}
+      </div> : null}
 
       {step === 'serve' && (
         <FeedServe character={character} reaction={reaction} runKey={servedKey} soundEnabled={soundEnabled} onRestart={restart}
