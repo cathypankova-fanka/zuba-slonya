@@ -336,13 +336,13 @@ export const CHARACTER_FAVORITES: Record<string, string[]> = {
     'soup/ingredients/peas',
     'icecream/flavors/vanilla',
   ],
-  sister: [
+  aunt: [
     'sandwich/fillings/avocado_slice',
     'drinks/recipes/tea_green',
     'cake/toppings/macaron',
     'sandwich/fillings/tomato',
   ],
-  brother: [
+  dad: [
     'sandwich/fillings/patty',
     'drinks/recipes/coffee_cappuccino',
     'pizza/toppings/pepperoni',
@@ -354,7 +354,7 @@ export const CHARACTER_FAVORITES: Record<string, string[]> = {
     'cake/toppings/strawberry',
     'sandwich/fillings/tomato',
   ],
-  dad: [
+  uncle: [
     'sandwich/fillings/egg',
     'drinks/recipes/coffee_latte',
     'sandwich/fillings/ham',

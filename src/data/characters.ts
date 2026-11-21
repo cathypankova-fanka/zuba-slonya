@@ -115,7 +115,7 @@ export const CHARACTERS: CharacterItem[] = [
     faceMaskAnchor: { y: 0.51, scale: 1.02 },
   },
   {
-    id: 'sister',
+    id: 'aunt',
     name: 'Тётя',
     category: 'family',
     imageSrc: '/assets/aistudio/Person_looking_into_camera_9485ca4b_b98cedab.webp',
@@ -124,7 +124,7 @@ export const CHARACTERS: CharacterItem[] = [
     faceMaskAnchor: { y: 0.45, scale: 0.82 },
   },
   {
-    id: 'brother',
+    id: 'dad',
     name: 'Папа',
     category: 'family',
     imageSrc: '/assets/aistudio/Person_looking_into_camera_eef3e2fb_a3a432b8.webp',
@@ -142,7 +142,7 @@ export const CHARACTERS: CharacterItem[] = [
     faceMaskAnchor: { y: 0.47, scale: 0.8 },
   },
   {
-    id: 'dad',
+    id: 'uncle',
     name: 'Дядя',
     category: 'family',
     imageSrc: '/assets/aistudio/Person_looking_into_camera_611a2389_ee7cb4d1.webp',
