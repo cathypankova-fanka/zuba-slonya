@@ -19,7 +19,7 @@ export const SplashScreen: React.FC<{ voiceEnabled: boolean; onDone: () => void 
       onClick={start}
       aria-label="Играть"
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-cover bg-center cursor-pointer"
-      style={{ backgroundImage: "url('/assets/princess/bg/map.webp')" }}
+      style={{ backgroundImage: "url('/assets/princess/bg/map_splash.webp')" }}
     >
       <div className="absolute inset-0 bg-black/20" />
       <div className="relative flex items-end justify-center gap-4 sm:gap-10">
