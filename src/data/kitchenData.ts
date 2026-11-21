@@ -1,8 +1,8 @@
 export type KitchenMode = 'pizza' | 'icecream' | 'drinks' | 'soup' | 'sandwich' | 'cake';
 export type MiniGameMode = 'feed' | 'shadow' | 'bubbles' | 'memory' | 'puzzle' | 'weather';
 /** Новые пошаговые мини-игры (CookKit/PlayKit) */
-export type PlayMode = 'milkshake' | 'pancakes' | 'cookies' | 'popcorn' | 'skewers' | 'picnic' | 'bedtime' | 'doctor' | 'garden' | 'laundry' | 'popit' | 'phone' | 'numbers' | 'letters';
-export const PLAY_MODES: PlayMode[] = ['milkshake', 'pancakes', 'cookies', 'popcorn', 'skewers', 'picnic', 'bedtime', 'doctor', 'garden', 'laundry', 'popit', 'phone', 'numbers', 'letters'];
+export type PlayMode = 'milkshake' | 'pancakes' | 'cookies' | 'popcorn' | 'skewers' | 'picnic' | 'bedtime' | 'doctor' | 'garden' | 'laundry' | 'popit' | 'phone' | 'numbers' | 'letters' | 'music' | 'house' | 'birthday';
+export const PLAY_MODES: PlayMode[] = ['milkshake', 'pancakes', 'cookies', 'popcorn', 'skewers', 'picnic', 'bedtime', 'doctor', 'garden', 'laundry', 'popit', 'phone', 'numbers', 'letters', 'music', 'house', 'birthday'];
 export type AllGameMode =
   | 'face'
   | 'tshirt'

@@ -18,6 +18,9 @@ import { FaceMission } from './FaceMission';
 import { TShirtMission } from './TShirtMission';
 import { BathMission } from './BathMission';
 import { ShopMission } from './ShopMission';
+import { MusicGame } from './MusicGame';
+import { HouseMission } from './HouseMission';
+import { BirthdayMission } from './BirthdayMission';
 import { FriendVisit } from './PlayKit';
 
 /** Старые режимы, переделанные в пошаговые миссии. */
@@ -41,6 +44,9 @@ export const PlayRouter: React.FC<{ mode: PlayMode | string; character: Characte
     case 'phone': return <PhoneGame {...p} />;
     case 'numbers': return <TraceGame key="n" kind="numbers" soundEnabled={soundEnabled} />;
     case 'letters': return <TraceGame key="l" kind="letters" soundEnabled={soundEnabled} />;
+    case 'music': return <MusicGame {...p} />;
+    case 'house': return <HouseMission {...p} />;
+    case 'birthday': return <BirthdayMission {...p} />;
     case 'shadow': return <ShopMission {...p} />;
     case 'face': return <FaceMission {...p} />;
     case 'tshirt': return <TShirtMission {...p} />;

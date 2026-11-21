@@ -161,6 +161,9 @@ const MODE_TITLES: Record<AllGameMode, string> = {
   phone: 'Телефон',
   numbers: 'Цифры',
   letters: 'Буквы',
+  music: 'Музыка',
+  house: 'Домик',
+  birthday: 'День рождения',
 };
 
 const KITCHEN_MODES = ['pizza', 'icecream', 'drinks', 'soup', 'sandwich', 'cake'];

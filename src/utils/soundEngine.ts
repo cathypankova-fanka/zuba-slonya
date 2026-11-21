@@ -899,6 +899,77 @@ class ToddlerSoundEngine {
     playVoice(phrase.id, enabled, () => this.speakViaBrowserSpeech(phrase.text));
     return true;
   }
+
+  /** Пластинка ксилофона: звонкий удар (основной тон + обертон), быстро затухает. */
+  public playXylo(enabled: boolean, freq: number): void {
+    if (!enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, now);
+    out.gain.linearRampToValueAtTime(0.32, now + 0.005);
+    out.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+    out.connect(ctx.destination);
+    [[1, 1], [3.98, 0.25], [9.2, 0.06]].forEach(([m, v]) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq * m, now);
+      g.gain.setValueAtTime(v, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + (m === 1 ? 1.1 : 0.25));
+      o.connect(g); g.connect(out);
+      o.start(now); o.stop(now + 1.15);
+    });
+  }
+
+  private noiseBuf: AudioBuffer | null = null;
+  private noise(ctx: AudioContext): AudioBufferSourceNode {
+    if (!this.noiseBuf) {
+      this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const d = this.noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuf;
+    return src;
+  }
+
+  /** Барабаны: бочка, малый, тарелочка, том, бубен. */
+  public playDrum(enabled: boolean, kind: 'kick' | 'snare' | 'hat' | 'tom' | 'tambourine' | 'cymbal'): void {
+    if (!enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    if (kind === 'kick' || kind === 'tom') {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      const f0 = kind === 'kick' ? 150 : 260;
+      o.frequency.setValueAtTime(f0, now);
+      o.frequency.exponentialRampToValueAtTime(kind === 'kick' ? 45 : 110, now + 0.25);
+      g.gain.setValueAtTime(0.9, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + (kind === 'kick' ? 0.45 : 0.35));
+      o.connect(g); g.connect(ctx.destination);
+      o.start(now); o.stop(now + 0.5);
+      return;
+    }
+    const n = this.noise(ctx);
+    const f = ctx.createBiquadFilter();
+    const g = ctx.createGain();
+    const len = kind === 'snare' ? 0.22 : kind === 'hat' ? 0.06 : kind === 'tambourine' ? 0.18 : 0.9;
+    f.type = kind === 'snare' ? 'bandpass' : 'highpass';
+    f.frequency.setValueAtTime(kind === 'snare' ? 1800 : kind === 'cymbal' ? 5000 : 7000, now);
+    g.gain.setValueAtTime(kind === 'cymbal' ? 0.35 : 0.5, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + len);
+    n.connect(f); f.connect(g); g.connect(ctx.destination);
+    n.start(now); n.stop(now + len + 0.05);
+    if (kind === 'snare') {
+      const o = ctx.createOscillator(); const g2 = ctx.createGain();
+      o.frequency.setValueAtTime(220, now);
+      g2.gain.setValueAtTime(0.4, now); g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      o.connect(g2); g2.connect(ctx.destination); o.start(now); o.stop(now + 0.15);
+    }
+  }
 }
 
 export const soundEngine = new ToddlerSoundEngine();

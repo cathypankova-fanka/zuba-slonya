@@ -46,7 +46,7 @@ export const MAP_MARKERS: MapMarker[] = [
   // Новые мини-игры
   { mode: 'milkshake', img: 'milkshake', aria: 'Милкшейк', x: 7250, y: 1450 },
   { mode: 'pancakes', img: 'pancakes', aria: 'Блинчики', x: 2300, y: 800 },
-  { mode: 'cookies', img: 'cookies', aria: 'Печенье', x: 1650, y: 2550 },
+  { mode: 'cookies', img: 'cookies', aria: 'Печенье', x: 1450, y: 2420 },
   { mode: 'popcorn', img: 'popcorn', aria: 'Попкорн', x: 5600, y: 3600 },
   { mode: 'skewers', img: 'skewers', aria: 'Фруктовые шашлычки', x: 1450, y: 1850 },
   { mode: 'picnic', img: 'picnic', aria: 'Пикник', x: 7700, y: 2850 },
@@ -58,6 +58,9 @@ export const MAP_MARKERS: MapMarker[] = [
   { mode: 'phone', img: 'phone', aria: 'Телефон', x: 4650, y: 2250 },
   { mode: 'numbers', img: 'numbers', aria: 'Цифры', x: 8250, y: 2450 },
   { mode: 'letters', img: 'letters', aria: 'Буквы', x: 8500, y: 3250 },
+  { mode: 'music', img: 'music', aria: 'Музыка', x: 4650, y: 1500 },
+  { mode: 'house', img: 'house', aria: 'Домик', x: 2150, y: 2700 },
+  { mode: 'birthday', img: 'birthday', aria: 'День рождения', x: 4650, y: 700 },
 ];
 
 export interface MapDecor {
