@@ -23,6 +23,12 @@ const LAYERS: Layer[] = [
   { id: 'lettuce', name: 'Салат', src: P('lettuce_leaf'), h: 0.1, w: 1.1, a: 0.66 },
   { id: 'tomato', name: 'Помидорка', src: P('tomato_slice'), h: 0.09, w: 0.74, a: 0.83 },
   { id: 'pickles', name: 'Огурчики', src: P('pickles'), h: 0.09, w: 0.86, a: 0.69 },
+  { id: 'egg', name: 'Яичко', src: '/assets/items/sandwich/fillings/egg.webp', h: 0.08, w: 0.86, a: 0.86 },
+  { id: 'ham', name: 'Ветчина', src: '/assets/items/sandwich/fillings/ham.webp', h: 0.08, w: 0.9, a: 0.82 },
+  { id: 'salami', name: 'Колбаска', src: '/assets/items/sandwich/fillings/salami.webp', h: 0.08, w: 0.9, a: 0.81 },
+  { id: 'avocado', name: 'Авокадо', src: '/assets/items/sandwich/fillings/avocado_slice.webp', h: 0.09, w: 0.84, a: 0.86 },
+  { id: 'salmon', name: 'Рыбка', src: '/assets/items/sandwich/fillings/salmon.webp', h: 0.12, w: 0.84, a: 0.75 },
+  { id: 'mushroom', name: 'Грибочки', src: '/assets/items/soup2/mushroom_slices.webp', h: 0.09, w: 0.78, a: 0.8 },
   { id: 'bun_top', name: 'Верхняя булочка', src: P('bun_top'), h: 0.34, w: 1, a: 0.69 },
 ];
 const layer = (id: string) => LAYERS.find((l) => l.id === id)!;
@@ -33,6 +39,14 @@ const RECIPES: Recipe[] = [
   { id: 'garden', name: 'Огородный', mid: ['patty', 'lettuce', 'tomato', 'pickles'] },
   { id: 'cheesy', name: 'Сырный', mid: ['patty', 'cheese', 'pickles'] },
   { id: 'fresh', name: 'Свежий', mid: ['lettuce', 'patty', 'tomato'] },
+  { id: 'double', name: 'Двойной', mid: ['patty', 'cheese', 'patty', 'cheese'] },
+  { id: 'egg', name: 'С яичком', mid: ['patty', 'cheese', 'egg'] },
+  { id: 'avocado', name: 'С авокадо', mid: ['lettuce', 'patty', 'avocado', 'tomato'] },
+  { id: 'ham', name: 'С ветчиной', mid: ['patty', 'ham', 'cheese', 'pickles'] },
+  { id: 'salami', name: 'С колбаской', mid: ['patty', 'salami', 'lettuce'] },
+  { id: 'fish', name: 'Рыбный', mid: ['lettuce', 'salmon', 'tomato'] },
+  { id: 'mushroom', name: 'Грибной', mid: ['patty', 'mushroom', 'cheese'] },
+  { id: 'rainbow', name: 'Радужный', mid: ['lettuce', 'patty', 'cheese', 'tomato', 'pickles'] },
 ];
 
 /** Бургер стопкой: слои снизу вверх; ketchup — точки кетчупа (доли ширины/высоты коробки). */
@@ -72,9 +86,9 @@ const FriesBox: React.FC<{ w: string; salt?: number }> = ({ w, salt = 0 }) => (
 );
 
 /** кружочек «что нужно»: текущий мигает, сделанное — с галочкой */
-const Need: React.FC<{ src: string; done: boolean; now: boolean }> = ({ src, done, now }) => (
+const Need: React.FC<{ src: string; done: boolean; now: boolean; size?: string }> = ({ src, done, now, size = 'min(14vmin, 84px)' }) => (
   <span className={`relative rounded-full bg-white/95 shadow-lg border-4 flex items-center justify-center shrink-0 transition-all ${done ? 'border-[#10C97A]' : now ? 'border-[#FFB800] animate-pulse scale-110' : 'border-white opacity-70'}`}
-    style={{ width: 'min(14vmin, 84px)', height: 'min(14vmin, 84px)' }}>
+    style={{ width: size, height: size }}>
     <img src={src} alt="" className="w-[76%] h-[76%] object-contain" />
     {done && <span className="absolute -right-1 -top-1 w-[42%] h-[42%] rounded-full bg-[#10C97A] text-white font-black flex items-center justify-center text-[min(4.5vmin,22px)]">✓</span>}
   </span>
@@ -243,11 +257,11 @@ export const BurgerMission: React.FC<{ character: CharacterItem; soundEnabled: b
   const finishedBurger = [...order, 'bun_top'];
 
   const needRow = (items: { key: string; src: string; done: boolean; now: boolean }[]) => (
-    <div className="flex items-center justify-center gap-[2vmin] flex-wrap px-2" aria-hidden>
+    <div className={`flex items-center justify-center ${items.length > 4 ? 'gap-[0.8vmin]' : 'gap-[2vmin]'} px-2`} aria-hidden>
       {items.map((it, i) => (
         <React.Fragment key={it.key}>
-          {i > 0 && <span className="text-white/90 font-black text-[min(5vmin,28px)] drop-shadow">›</span>}
-          <Need src={it.src} done={it.done} now={it.now} />
+          {i > 0 && <span className="text-white/90 font-black text-[min(4vmin,24px)] drop-shadow">›</span>}
+          <Need src={it.src} done={it.done} now={it.now} size={items.length > 4 ? 'min(11vmin, 72px)' : undefined} />
         </React.Fragment>
       ))}
     </div>
@@ -288,12 +302,12 @@ export const BurgerMission: React.FC<{ character: CharacterItem; soundEnabled: b
       recipe={step !== 'pick' && step !== 'serve' ? <div className="w-[70%]"><Burger layers={finishedBurger} w="100%" /></div> : undefined}
       tray={tray}>
       {step === 'pick' && (
-        <div className={`grid ${portrait ? 'grid-cols-2' : 'grid-cols-4'} gap-[3vmin] px-3`}>
+        <div className={`grid ${portrait ? 'grid-cols-3 px-3' : 'grid-cols-6 pl-3 pr-[min(15vmin,140px)]'} gap-[2vmin]`}>
           {RECIPES.map((r) => (
             <button key={r.id} type="button" aria-label={r.name} onClick={() => { if (doneFx) return; setRecipe(r); next(); }}
-              className="rounded-[2rem] bg-white/90 shadow-xl p-[2vmin] flex flex-col items-center gap-2 active:scale-95 transition-transform">
-              <Burger layers={['bun_bottom', ...r.mid, 'bun_top']} w={portrait ? 'min(34vw, 17vh)' : 'min(22vmin, 190px)'} />
-              <div className="flex justify-center gap-1">{r.mid.map((x, i) => <img key={i} src={layer(x).src} alt="" className="w-[min(7vmin,40px)] h-[min(7vmin,40px)] object-contain" />)}</div>
+              className="rounded-[1.6rem] bg-white/90 shadow-xl p-[1.5vmin] flex flex-col items-center gap-1 active:scale-95 transition-transform">
+              <Burger layers={['bun_bottom', ...r.mid, 'bun_top']} w={portrait ? 'min(21vw, 9.5vh)' : 'min(12vmin, 130px)'} />
+              <div className="flex justify-center flex-wrap gap-0.5 max-w-[26vw] sm:max-w-none">{r.mid.map((x, i) => <img key={i} src={layer(x).src} alt="" className="w-[min(5.5vmin,34px)] h-[min(5.5vmin,34px)] object-contain" />)}</div>
             </button>
           ))}
         </div>

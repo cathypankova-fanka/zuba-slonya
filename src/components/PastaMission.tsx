@@ -25,6 +25,10 @@ const INGS: Ing[] = [
   { id: 'mozza', name: 'Моцарелла', src: P('mozzarella') },
   { id: 'carrot', name: 'Морковка', src: '/assets/items/soup2/carrot_slices.webp' },
   { id: 'mushroom', name: 'Грибочки', src: '/assets/items/soup2/mushroom_slices.webp' },
+  { id: 'broccoli', name: 'Брокколи', src: '/assets/items/soup2/broccoli_florets.webp' },
+  { id: 'peas', name: 'Горошек', src: '/assets/items/soup2/peas.webp' },
+  { id: 'corn', name: 'Кукуруза', src: '/assets/items/soup2/corn_kernels.webp' },
+  { id: 'ham', name: 'Ветчина', src: '/assets/items/sandwich/fillings/ham.webp' },
 ];
 const ing = (id: string) => INGS.find((i) => i.id === id)!;
 
@@ -34,10 +38,18 @@ const RECIPES: Recipe[] = [
   { id: 'cream', name: 'Сливочный соус', bowl: P('sauce_cream'), color: '#F6E7BF', dark: '#E2CB8E', items: ['milk', 'cheese'], tops: ['cheese', 'mushroom'] },
   { id: 'pesto', name: 'Зелёный соус', bowl: P('sauce_pesto'), color: '#5FA832', dark: '#3E7F1D', items: ['basil', 'cheese'], tops: ['mozza', 'tomato'] },
   { id: 'bolognese', name: 'Болоньезе', bowl: P('sauce_bolognese'), color: '#A4502A', dark: '#7A3416', items: ['tomato', 'meat', 'carrot'], tops: ['cheese', 'meat'] },
+  { id: 'mushroom', name: 'Грибной соус', bowl: P('sauce_cream'), color: '#E6CFA2', dark: '#B99263', items: ['milk', 'mushroom'], tops: ['mushroom', 'cheese'] },
+  { id: 'veggie', name: 'Овощной соус', bowl: P('sauce_tomato'), color: '#EE7A3A', dark: '#C1501E', items: ['tomato', 'carrot', 'corn'], tops: ['corn', 'basil'] },
+  { id: 'cheesy', name: 'Сырный соус', bowl: P('sauce_cream'), color: '#F8D86A', dark: '#E0B032', items: ['milk', 'cheese', 'mozza'], tops: ['mozza', 'cheese'] },
+  { id: 'pink', name: 'Розовый соус', bowl: P('sauce_tomato'), color: '#F39189', dark: '#D4625A', items: ['tomato', 'milk'], tops: ['cheese', 'basil'] },
+  { id: 'spring', name: 'Весенний соус', bowl: P('sauce_pesto'), color: '#8CCB4A', dark: '#5E9A26', items: ['broccoli', 'peas', 'cheese'], tops: ['peas', 'broccoli'] },
+  { id: 'meatballs', name: 'С фрикадельками', bowl: P('sauce_tomato'), color: '#D9432B', dark: '#A62C18', items: ['tomato', 'meat', 'basil'], tops: ['meat', 'cheese'] },
+  { id: 'peas', name: 'С горошком', bowl: P('sauce_cream'), color: '#EFE3B8', dark: '#CDB97A', items: ['milk', 'peas', 'ham'], tops: ['peas', 'ham'] },
+  { id: 'carbonara', name: 'Карбонара', bowl: P('sauce_cream'), color: '#F3E2B0', dark: '#D9BE78', items: ['milk', 'ham', 'cheese'], tops: ['ham', 'cheese'] },
 ];
 
 /** украшения: всё, что можно положить сверху (сколько хочешь) */
-const TOPS = ['cheese', 'basil', 'tomato', 'mozza', 'meat', 'mushroom'];
+const TOPS = ['cheese', 'basil', 'tomato', 'mozza', 'meat', 'mushroom', 'broccoli', 'peas', 'corn', 'ham'];
 
 interface Blob { x: number; y: number; r: number }
 interface Top { id: string; x: number; y: number; rot: number; k: number }
@@ -173,7 +185,7 @@ export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
   const finishTop = () => { if (doneFx || tops.length < 1) return; next(); };
 
   // ---------- подсказки ----------
-  const panShelf = useMemo(() => shuffle(INGS.filter((i) => i.id !== 'mozza')), [recipe]);
+  const panShelf = useMemo(() => shuffle(INGS), [recipe]);
   const showGesture = useStepHint(step, 2600, 7000, step !== 'pick' && step !== 'serve' && !doneFx && !(step === 'drain' && drained));
   const nextIng = recipe.items.find((x) => !inPan.includes(x));
   let hintKind: HintKind = 'drag';
@@ -297,12 +309,12 @@ export const PastaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
       recipe={step !== 'pick' && step !== 'serve' ? <PastaDish width="88%" sauce={recipe} blobs="full" tops={[]} /> : undefined}
       tray={tray}>
       {step === 'pick' && (
-        <div className={`grid ${portrait ? 'grid-cols-2' : 'grid-cols-4'} gap-[3vmin] px-3`}>
+        <div className={`grid ${portrait ? 'grid-cols-3 px-3' : 'grid-cols-6 pl-3 pr-[min(15vmin,140px)]'} gap-[2vmin]`}>
           {RECIPES.map((r) => (
-            <button key={r.id} type="button" aria-label={r.name} onClick={() => { setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => next(), 250); }}
-              className="rounded-[2rem] bg-white/90 shadow-xl p-[2vmin] flex flex-col items-center gap-1 active:scale-95 transition-transform">
-              <PastaDish width={portrait ? 'min(38vw, 20vh)' : 'min(26vmin, 220px)'} sauce={r} blobs="full" tops={[]} />
-              <div className="flex justify-center gap-1">{r.items.map((x) => <img key={x} src={ing(x).src} alt="" className="w-[min(7vmin,48px)] h-[min(7vmin,48px)] object-contain" />)}</div>
+            <button key={r.id} type="button" aria-label={r.name} onClick={() => { if (doneFx) return; setRecipe(r); next(); }}
+              className="rounded-[1.6rem] bg-white/90 shadow-xl p-[1.5vmin] flex flex-col items-center gap-1 active:scale-95 transition-transform">
+              <PastaDish width={portrait ? 'min(25vw, 13vh)' : 'min(13vmin, 150px)'} sauce={r} blobs="full" tops={[]} />
+              <div className="flex justify-center gap-1">{r.items.map((x) => <img key={x} src={ing(x).src} alt="" className="w-[min(6.5vmin,44px)] h-[min(6.5vmin,44px)] object-contain" />)}</div>
             </button>
           ))}
         </div>
