@@ -85,9 +85,10 @@ export const PopcornMission: React.FC<{ character: CharacterItem; soundEnabled: 
   else if (step === 'fire') hintTarget = knobRef;
   else if (step === 'shake') { hintKind = 'rub'; hintTarget = bucketRef; }
 
+  // тарелочка остаётся до плиты (пустой), чтобы плита не прыгала вниз под палец
   const tray = step === 'kernels'
     ? <Plate src={P('kernels')} label="Зёрнышки" plateRef={(el) => { kernelPlate.current = el; }} onPick={addKernels} target={potRef} onDrop={addKernels} />
-    : undefined;
+    : step === 'fire' ? <div className="h-[min(14vmin,110px)]" aria-hidden /> : undefined;
 
   const STOVE = 'min(60vmin, 520px)';
   const bucket = (w: string, ref?: React.Ref<HTMLDivElement>) => (
@@ -106,9 +107,11 @@ export const PopcornMission: React.FC<{ character: CharacterItem; soundEnabled: 
       {(step === 'kernels' || step === 'fire' || step === 'pop') && (
         <div className="relative flex items-end gap-[4vmin]">
           <Stove width={STOVE} on={fire} knob={
-            <button ref={knobRef} type="button" aria-label="Включить плиту" onClick={lightFire}
-              className={`absolute right-[5%] top-1/2 -translate-y-1/2 w-[15%] aspect-square rounded-full bg-[#E4E4E7] border-4 border-white shadow-lg transition-transform ${fire ? 'rotate-90' : step === 'fire' ? 'animate-pulse' : ''}`}>
-              <span className="absolute left-1/2 top-[8%] -translate-x-1/2 w-[16%] h-[42%] bg-[#3F3F46] rounded" />
+            <button ref={knobRef} type="button" aria-label="Включить плиту" onPointerDown={(e) => { e.preventDefault(); lightFire(); }} onClick={lightFire}
+              className="absolute right-[1%] top-1/2 -translate-y-1/2 w-[26%] aspect-square rounded-full flex items-center justify-center touch-none">
+              <span className={`relative w-[66%] aspect-square rounded-full bg-[#E4E4E7] border-4 border-white shadow-lg transition-transform ${fire ? 'rotate-90' : step === 'fire' ? 'animate-pulse ring-4 ring-[#F97316]' : ''}`}>
+                <span className="absolute left-1/2 top-[8%] -translate-x-1/2 w-[16%] h-[42%] bg-[#3F3F46] rounded" />
+              </span>
             </button>}>
             <div ref={potRef} className="relative w-[78%]">
               <img src="/assets/items/soup2/pot_open.webp" alt="" draggable={false} className={`w-full pointer-events-none ${step === 'pop' ? 'animate-[wiggle_0.3s_infinite]' : ''}`} />
