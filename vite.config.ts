@@ -69,7 +69,8 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,jpg,webp,svg,woff,woff2}'],
+          // mp3 — вся озвучка помощников скачивается сразу, чтобы офлайн звучали все фразы, а не только услышанные
+          globPatterns: ['**/*.{js,css,html,ico,png,jpg,webp,svg,woff,woff2,mp3}'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           // Только сборочные js/css с хэшем в имени не требуют ревизии. Картинки из public/assets
           // (герои, реакции) меняются под тем же именем — им нужна ревизия, иначе кэш навсегда старый.
