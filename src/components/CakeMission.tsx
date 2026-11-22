@@ -8,7 +8,7 @@ import { soundEngine } from '../utils/soundEngine';
 import { playVoice, whenVoiceIdle } from '../utils/voice';
 import { useIdleHint } from './MiniGameShell';
 import { FeedServe } from './MissionKit';
-import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint } from './CookKit';
+import { CookScreen, GestureHint, HintKind, LoopScroller, Plate, useStepHint, BakeOven } from './CookKit';
 import { BlowBadge } from './PlayKit';
 import { useBlow } from '../utils/useBlow';
 
@@ -151,7 +151,7 @@ const CakeSvg: React.FC<{
 };
 
 export const CakeMission: React.FC<{ character: CharacterItem; soundEnabled: boolean }> = ({ character, soundEnabled }) => {
-  const [stepIdx, setStepIdx] = useState(0);
+  const [stepIdx, setStepIdx] = useState(() => (import.meta.env.DEV ? Math.max(0, STEPS.findIndex((x) => x.id === new URLSearchParams(location.search).get('step'))) : 0));
   const step: StepId = STEPS[stepIdx].id;
   const [recipe, setRecipe] = useState<Recipe>(RECIPES[0]);
   const [eggs, setEggs] = useState(0);
@@ -407,7 +407,7 @@ export const CakeMission: React.FC<{ character: CharacterItem; soundEnabled: boo
   const candleBtns = useRef<(HTMLButtonElement | null)[]>([]);
   const hintFromRef = useRef<HTMLButtonElement | null>(null);
   const tapTargetRef = useRef<Element | null>(null);
-  const showGesture = useStepHint(step, 2600, 7000, step !== 'serve' && step !== 'pick' && !doneFx && !blowing && oven !== 'baking');
+  const showGesture = useStepHint(step, 2600, 7000, step !== 'serve' && step !== 'pick' && !doneFx && !blowing && step !== 'bake');
   const topShelf = useMemo(() => [...CAKE_TOPPINGS].sort(() => Math.random() - 0.5), [recipe]);
   const nextTopId = recipe.toppings[tops.length % recipe.toppings.length];
 
@@ -486,17 +486,13 @@ export const CakeMission: React.FC<{ character: CharacterItem; soundEnabled: boo
       )}
 
       {step === 'bake' && (
-        <button ref={ovenRef} type="button" aria-label="Духовка" onClick={bakeTap}
-          className="relative rounded-[3rem] bg-gradient-to-b from-[#64748B] to-[#334155] shadow-2xl p-[2.5vmin] active:scale-95 transition-transform"
-          style={{ width: 'min(86vmin, 720px)', height: 'min(60vmin, 500px)' }}>
-          <div className="w-full h-full rounded-[2rem] bg-[#1E293B] overflow-hidden relative flex items-center justify-center"
-            style={{ boxShadow: oven === 'baking' ? 'inset 0 0 90px #FB923C' : 'inset 0 0 20px #000' }}>
-            <div className="w-[50%] transition-all duration-700" style={{ opacity: oven === 'idle' ? 0.25 : 1, filter: oven === 'baking' ? 'brightness(.75)' : 'none' }}>
-              <CakeSvg sponge={recipe.sponge} candleId={recipe.candle} />
+        <BakeOven soundEnabled={soundEnabled} tray="#94A3B8"
+          dish={(baked) => (
+            <div className="w-full h-full flex items-center justify-center" style={{ filter: baked ? 'none' : 'saturate(.55) brightness(1.18)', transition: 'filter .8s' }}>
+              <div className="w-[96%]"><CakeSvg sponge={recipe.sponge} candleId={recipe.candle} /></div>
             </div>
-          </div>
-          <div className="absolute -top-[7vmin] left-1/2 -translate-x-1/2 text-[9vmin]">{oven === 'idle' ? '🔥' : oven === 'baking' ? '⏳' : '🔔'}</div>
-        </button>
+          )}
+          onReady={() => say('ck_bake_ready', soundEnabled)} onDone={() => goNext()} />
       )}
 
       {(step === 'cream' || step === 'top' || step === 'candles' || step === 'light' || step === 'blow') && (

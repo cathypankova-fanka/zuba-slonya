@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { soundEngine } from '../utils/soundEngine';
 
 /**
  * Общий каркас кулинарных миссий в стиле «крупный план на весь экран»:
@@ -479,6 +480,123 @@ export const TopBasket: React.FC<{ items: string[]; size: string; boxRef?: React
         background: 'repeating-linear-gradient(115deg, #C98A4B 0 8px, #9A5F2C 8px 12px)',
         boxShadow: '0 6px 8px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.3)', opacity: 0.92,
       }} />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------- духовка
+
+/**
+ * Духовка как в пицце: блюдо на подставке рядом — перетащить внутрь; держать кнопку 🔥 — печётся (жар, тэны, шкала);
+ * звенит 🔔 — смахнуть дверцу вниз (или нажать) — блюдо выезжает с паром → onDone.
+ * dish(baked) рисует блюдо (до/после выпекания); квадратное.
+ */
+export const BakeOven: React.FC<{ dish: (baked: boolean) => React.ReactNode; soundEnabled: boolean; onReady?: () => void; onDone: () => void; holdSecs?: number; tray?: string }> = ({ dish, soundEnabled, onReady, onDone, holdSecs = 3.6, tray = '#D6A56A' }) => {
+  const [st, setSt] = useState<'idle' | 'in' | 'baking' | 'ready' | 'open' | 'out'>('idle');
+  const [pct, setPct] = useState(0);
+  const [heating, setHeating] = useState(false);
+  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
+  const ovenRef = useRef<HTMLDivElement>(null);
+  const peelRef = useRef<HTMLDivElement>(null);
+  const knobRef = useRef<HTMLButtonElement>(null);
+  const doorRef = useRef<HTMLButtonElement>(null);
+  const doorY = useRef<number | null>(null);
+  const cb = useRef({ onReady, onDone }); cb.current = { onReady, onDone };
+
+  useEffect(() => {
+    if (!heating || (st !== 'in' && st !== 'baking')) return;
+    if (st === 'in') setSt('baking');
+    let raf = 0, last = performance.now(), tick = 0;
+    const f = (now: number) => {
+      const dt = (now - last) / 1000; last = now; tick += dt;
+      if (tick > 0.35) { tick = 0; soundEngine.playGamePop(soundEnabled, 1); }
+      setPct((p) => {
+        const n = Math.min(1, p + dt / holdSecs);
+        if (p < 1 && n >= 1) { setHeating(false); setSt('ready'); soundEngine.playGameReward(soundEnabled); cb.current.onReady?.(); }
+        return n;
+      });
+      raf = requestAnimationFrame(f);
+    };
+    raf = requestAnimationFrame(f);
+    const up = () => setHeating(false);
+    window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); };
+  }, [heating, st, soundEnabled, holdSecs]);
+
+  const open = () => {
+    if (st !== 'ready') return;
+    setSt('open'); soundEngine.playGameFlip(soundEnabled);
+    window.setTimeout(() => { setSt('out'); soundEngine.playGameOk(soundEnabled); }, 900);
+    window.setTimeout(() => cb.current.onDone(), 2000);
+  };
+  const up = (e: React.PointerEvent) => {
+    if (!drag) return;
+    setDrag(null);
+    const r = ovenRef.current?.getBoundingClientRect();
+    if (r && e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom) { setSt('in'); soundEngine.playGamePop(soundEnabled, 3); }
+  };
+
+  const portrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.2;
+  const OV = portrait ? 'min(84vw, 44vh, 520px)' : 'min(58vmin, 520px)';
+  const inside = st !== 'idle';
+  const baked = st === 'ready' || st === 'open' || st === 'out';
+  const glow = heating ? 1 : st === 'baking' ? 0.45 : st === 'ready' ? 0.6 : 0;
+  const hint = useStepHint(`oven-${st}`, 2400, 7000, !heating && st !== 'open' && st !== 'out' && !drag);
+
+  return (
+    <div className={`flex ${portrait ? 'flex-col' : 'flex-row'} items-center gap-[4vmin]`}>
+      <div ref={ovenRef} className="relative rounded-[2rem] shrink-0" style={{ width: OV, height: `calc(${OV} * 0.86)`, background: 'linear-gradient(#CBD5E1, #94A3B8)', boxShadow: '0 18px 30px rgba(0,0,0,.3), inset 0 4px 0 #F1F5F9' }}>
+        <div className="absolute left-[5%] right-[5%] top-[4%] h-[16%] rounded-xl bg-[#334155] flex items-center justify-between px-[4%]">
+          <div className="flex gap-1">{[0, 1, 2].map((k) => <span key={k} className="w-3 h-3 rounded-full" style={{ background: glow > 0 ? '#FB923C' : '#475569' }} />)}</div>
+          <div className="h-[40%] w-[44%] rounded-full bg-[#1E293B] overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct * 100}%`, background: 'linear-gradient(90deg,#FDE047,#F97316,#DC2626)' }} /></div>
+          <button ref={knobRef} type="button" aria-label="Огонь"
+            onPointerDown={(e) => { e.preventDefault(); if (st === 'in' || st === 'baking') setHeating(true); }}
+            className={`relative h-[86%] aspect-square rounded-full border-4 border-white flex items-center justify-center touch-none transition-transform ${heating ? 'scale-90 bg-[#F97316]' : 'bg-[#EF4444]'} ${(st === 'in' || st === 'baking') && !heating ? 'animate-pulse ring-4 ring-[#FDE047]' : ''}`}
+            style={{ fontSize: `calc(${OV} * 0.07)` }}>🔥</button>
+        </div>
+        <div className="absolute left-[7%] right-[7%] top-[24%] bottom-[7%] rounded-[1.2rem] overflow-hidden flex items-center justify-center" style={{ background: '#1E1B1A', boxShadow: `inset 0 0 ${40 + glow * 80}px rgba(251,146,60,${0.25 + glow * 0.7})` }}>
+          <div className="absolute left-[6%] right-[6%] top-[8%] h-[4%] rounded-full" style={{ background: glow > 0 ? '#F97316' : '#57534E', boxShadow: glow > 0 ? '0 0 14px #F97316' : undefined }} />
+          <div className="absolute left-[6%] right-[6%] bottom-[8%] h-[4%] rounded-full" style={{ background: glow > 0 ? '#F97316' : '#57534E', boxShadow: glow > 0 ? '0 0 14px #F97316' : undefined }} />
+          {inside && st !== 'out' && (
+            <div className="w-[58%] aspect-square" style={{ animation: st === 'in' ? 'drop-in .5s ease-out both' : undefined, transform: st === 'open' ? 'translateY(28%) scale(1.08)' : undefined, transition: 'transform .8s ease-out' }}>
+              {dish(baked)}
+            </div>
+          )}
+          {heating && [0, 1, 2].map((k) => <span key={k} className="absolute text-[min(7vmin,40px)] pointer-events-none" style={{ left: `${20 + k * 28}%`, bottom: '14%', animation: `steam-rise 1.2s ease-out ${k * 0.3}s infinite`, opacity: 0 }}>〰️</span>)}
+          {(st === 'open' || st === 'out') && [0, 1, 2].map((k) => (
+            <img key={k} src="/assets/items/soup2/steam.webp" alt="" className="absolute w-[34%] pointer-events-none" style={{ left: `${10 + k * 26}%`, top: '10%', animation: `steam-rise 1.8s ease-out ${k * 0.4}s infinite`, opacity: 0 }} />
+          ))}
+        </div>
+        <button ref={doorRef} type="button" aria-label="Дверца духовки" onClick={open}
+          onPointerDown={(e) => { doorY.current = e.clientY; }}
+          onPointerUp={(e) => { if (doorY.current != null && e.clientY - doorY.current > 30) open(); doorY.current = null; }}
+          className="absolute left-[5%] right-[5%] top-[22%] bottom-[5%] rounded-[1.4rem]"
+          style={{
+            transformOrigin: '50% 100%', transform: st === 'open' || st === 'out' ? 'perspective(700px) rotateX(-78deg)' : 'none',
+            transition: 'transform .7s cubic-bezier(.3,1.3,.6,1)', pointerEvents: st === 'ready' ? 'auto' : 'none',
+            background: 'transparent', border: `calc(${OV} * 0.035) solid #E2E8F0`, borderTopWidth: `calc(${OV} * 0.09)`, boxShadow: '0 6px 10px rgba(0,0,0,.25), inset 0 0 0 3px rgba(255,255,255,.5)',
+          }}>
+          <span className="absolute left-[10%] right-[10%] rounded-full bg-[#64748B]" style={{ top: `calc(${OV} * -0.065)`, height: `calc(${OV} * 0.035)` }} />
+          <span className="absolute inset-0 rounded-[0.8rem]" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,.22) 0 18%, rgba(255,255,255,0) 30%, rgba(255,255,255,.12) 45%, rgba(255,255,255,0) 55%)' }} />
+          {st === 'ready' && <span className="absolute -top-[30%] left-1/2 -translate-x-1/2 text-[min(10vmin,56px)] animate-bounce">🔔</span>}
+        </button>
+      </div>
+      {!inside && (
+        <div ref={peelRef} className="relative shrink-0" style={{ width: `calc(${OV} * 0.62)` }}>
+          <div onPointerDown={(e) => { try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } setDrag({ x: e.clientX, y: e.clientY }); }}
+            onPointerMove={(e) => { if (drag) setDrag({ x: e.clientX, y: e.clientY }); }} onPointerUp={up} onPointerCancel={() => setDrag(null)}
+            className="relative rounded-[1.6rem] p-[7%] cursor-grab touch-none" style={{ aspectRatio: '1', background: tray, boxShadow: '0 10px 18px rgba(0,0,0,.25)', opacity: drag ? 0.4 : 1 }}>
+            <div className="w-full h-full pointer-events-none">{dish(false)}</div>
+          </div>
+        </div>
+      )}
+      {drag && createPortal(
+        <div className="fixed z-[60] pointer-events-none" style={{ left: drag.x, top: drag.y, width: `calc(${OV} * 0.5)`, transform: 'translate(-50%,-50%) scale(1.05)', filter: 'drop-shadow(0 12px 14px rgba(0,0,0,.35))' }}>
+          <div className="aspect-square">{dish(false)}</div>
+        </div>,
+        document.body,
+      )}
+      <GestureHint show={hint} kind={st === 'idle' ? 'drag' : st === 'ready' ? 'swipe' : 'hold'} target={st === 'idle' ? ovenRef : st === 'ready' ? doorRef : knobRef} from={st === 'idle' ? peelRef : undefined} />
     </div>
   );
 };
