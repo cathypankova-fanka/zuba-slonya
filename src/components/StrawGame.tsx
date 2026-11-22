@@ -59,15 +59,15 @@ export const StrawGame: React.FC<{ character: CharacterItem; soundEnabled: boole
       last = now;
       const { w, h, g } = size();
       const el = (now - t0.current) / 1000;
-      const speed = 1 + el / 35 + drunkRef.current * 0.06; // постепенно ускоряемся
-      if (!fastSaid.current && speed > 1.8) { fastSaid.current = true; say('st_fast', soundEnabled); }
+      const speed = Math.min(2.2, 1 + el / 70 + drunkRef.current * 0.04); // постепенно ускоряемся
+      if (!fastSaid.current && speed > 1.6) { fastSaid.current = true; say('st_fast', soundEnabled); }
       // новые стаканчики
       const live = glasses.current.filter((q) => !q.leaving).length;
       if ((live < 2 || now - lastSpawn.current > Math.max(1400, 3200 - el * 30)) && live < 4) {
         lastSpawn.current = now;
         const fromLeft = Math.random() < 0.5;
         const a = (Math.random() * 0.8 - 0.4);
-        const v = (70 + Math.random() * 50);
+        const v = (40 + Math.random() * 30);
         glasses.current.push({
           id: idc.current++, x: fromLeft ? -g * 0.5 : w + g * 0.5, y: h * (0.2 + Math.random() * 0.55),
           vx: (fromLeft ? 1 : -1) * v * Math.cos(a), vy: v * Math.sin(a), level: 1, straw: false,
@@ -76,7 +76,7 @@ export const StrawGame: React.FC<{ character: CharacterItem; soundEnabled: boole
       }
       // движение: прыгают от краёв, через время убегают
       for (const q of glasses.current) {
-        if (!q.leaving && now - q.born > 9000 - Math.min(4000, el * 60)) q.leaving = true;
+        if (!q.leaving && now - q.born > 12000 - Math.min(4000, el * 40)) q.leaving = true;
         q.x += q.vx * dt * speed; q.y += q.vy * dt * speed;
         q.wob += dt * 6;
         if (!q.leaving) {
