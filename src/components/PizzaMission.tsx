@@ -56,13 +56,17 @@ const BOARD = 'min(66vmin, 600px)';
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 const say = (id: string, on: boolean) => playVoice(id, on);
 
+/** сыр расплавленными пятнами — между ними виден соус (красный, зелёный…) */
+const CHEESE_MASK = 'radial-gradient(circle at 59% 37%, #000 9%, transparent 12%), radial-gradient(circle at 24% 27%, #000 12%, transparent 15%), radial-gradient(circle at 30% 64%, #000 10%, transparent 13%), radial-gradient(circle at 25% 82%, #000 7%, transparent 10%), radial-gradient(circle at 22% 29%, #000 9%, transparent 12%), radial-gradient(circle at 71% 26%, #000 7%, transparent 10%), radial-gradient(circle at 29% 72%, #000 6%, transparent 9%), radial-gradient(circle at 33% 46%, #000 11%, transparent 14%), radial-gradient(circle at 25% 68%, #000 6%, transparent 9%), radial-gradient(circle at 46% 23%, #000 10%, transparent 13%), radial-gradient(circle at 35% 55%, #000 9%, transparent 12%), radial-gradient(circle at 36% 33%, #000 10%, transparent 13%), radial-gradient(circle at 57% 41%, #000 6%, transparent 9%), radial-gradient(circle at 42% 65%, #000 6%, transparent 9%), radial-gradient(circle at 26% 25%, #000 10%, transparent 13%), radial-gradient(circle at 44% 81%, #000 11%, transparent 14%)';
+const cheeseStyle: React.CSSProperties = { WebkitMaskImage: CHEESE_MASK, maskImage: CHEESE_MASK };
+
 interface Placed { uid: string; id: PizzaToppingId; x: number; y: number; r: number; s: number }
 
 const PizzaPreview: React.FC<{ r: Recipe; size: string }> = ({ r, size }) => (
   <div className="relative rounded-full overflow-hidden" style={{ width: size, height: size }}>
     <img src="/assets/items/pizza/dough.webp" alt="" className="absolute inset-0 w-full h-full object-contain" />
     {getPizzaSauceAssetUrl(r.sauce) && <img src={getPizzaSauceAssetUrl(r.sauce)!} alt="" className="absolute inset-[8%] w-[84%] h-[84%] object-contain" />}
-    <img src="/assets/items/pizza/cheese_layer.webp" alt="" className="absolute inset-[8%] w-[84%] h-[84%] object-contain" />
+    <img src="/assets/items/pizza/cheese_layer.webp" alt="" className="absolute inset-[8%] w-[84%] h-[84%] object-contain" style={cheeseStyle} />
     {r.toppings.flatMap((t, ti) => [0, 1, 2].map((k) => (
       <img key={`${t}${k}`} src={getPizzaToppingAssetUrl(t)} alt="" className="absolute w-[22%]"
         style={{ left: `${50 + 26 * Math.cos((ti * 3 + k) * 1.3)}%`, top: `${50 + 26 * Math.sin((ti * 3 + k) * 1.3)}%`, transform: 'translate(-50%,-50%)' }} />
@@ -342,7 +346,7 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
             backgroundImage: `url(${sauceUrl})`, backgroundSize: '600%', backgroundPosition: 'center' }} />
       ))}
       {showSauce && sauceUrl && <img src={sauceUrl} alt="" draggable={false} className="absolute inset-[6%] w-[88%] h-[88%] object-contain pointer-events-none animate-[fadeIn_0.5s]" />}
-      {showCheese > 0 && <img src="/assets/items/pizza/cheese_layer.webp" alt="" draggable={false} className="absolute inset-[6%] w-[88%] h-[88%] object-contain pointer-events-none" style={{ opacity: showCheese }} />}
+      {showCheese > 0 && <img src="/assets/items/pizza/cheese_layer.webp" alt="" draggable={false} className="absolute inset-[6%] w-[88%] h-[88%] object-contain pointer-events-none" style={{ ...cheeseStyle, opacity: showCheese }} />}
       {placed.map((t) => (
         <img key={t.uid} src={getPizzaToppingAssetUrl(t.id)} alt="" draggable={false}
           className="absolute pointer-events-none"
