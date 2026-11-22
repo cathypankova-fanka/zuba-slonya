@@ -67,6 +67,7 @@ export const MAP_MARKERS: MapMarker[] = [
   { mode: 'straws', img: 'straws', aria: 'Трубочки', x: 7750, y: 2050 },
   { mode: 'domino', img: 'domino', aria: 'Домино', x: 3550, y: 3150 },
   { mode: 'marble', img: 'marble', aria: 'Шарики', x: 3300, y: 1400 },
+  { mode: 'fruitart', img: 'fruitart', aria: 'Фруктовые картинки', x: 6100, y: 3150 },
 ];
 
 export interface MapDecor {

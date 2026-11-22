@@ -1,8 +1,8 @@
 export type KitchenMode = 'pizza' | 'icecream' | 'drinks' | 'soup' | 'sandwich' | 'cake';
 export type MiniGameMode = 'feed' | 'shadow' | 'bubbles' | 'memory' | 'puzzle' | 'weather';
 /** Новые пошаговые мини-игры (CookKit/PlayKit) */
-export type PlayMode = 'milkshake' | 'pancakes' | 'cookies' | 'popcorn' | 'skewers' | 'picnic' | 'bedtime' | 'doctor' | 'garden' | 'laundry' | 'popit' | 'phone' | 'numbers' | 'letters' | 'music' | 'house' | 'birthday' | 'pasta' | 'rain' | 'burger' | 'straws' | 'domino' | 'marble';
-export const PLAY_MODES: PlayMode[] = ['milkshake', 'pancakes', 'cookies', 'popcorn', 'skewers', 'picnic', 'bedtime', 'doctor', 'garden', 'laundry', 'popit', 'phone', 'numbers', 'letters', 'music', 'house', 'birthday', 'pasta', 'rain', 'burger', 'straws', 'domino', 'marble'];
+export type PlayMode = 'milkshake' | 'pancakes' | 'cookies' | 'popcorn' | 'skewers' | 'picnic' | 'bedtime' | 'doctor' | 'garden' | 'laundry' | 'popit' | 'phone' | 'numbers' | 'letters' | 'music' | 'house' | 'birthday' | 'pasta' | 'rain' | 'burger' | 'straws' | 'domino' | 'marble' | 'fruitart';
+export const PLAY_MODES: PlayMode[] = ['milkshake', 'pancakes', 'cookies', 'popcorn', 'skewers', 'picnic', 'bedtime', 'doctor', 'garden', 'laundry', 'popit', 'phone', 'numbers', 'letters', 'music', 'house', 'birthday', 'pasta', 'rain', 'burger', 'straws', 'domino', 'marble', 'fruitart'];
 export type AllGameMode =
   | 'face'
   | 'tshirt'

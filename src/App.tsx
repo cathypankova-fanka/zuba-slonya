@@ -169,6 +169,7 @@ const MODE_TITLES: Record<AllGameMode, string> = {
   straws: 'Трубочки',
   domino: 'Домино',
   marble: 'Шарики',
+  fruitart: 'Фруктовые картинки',
   rain: 'Дождик и лужи',
 };
 
