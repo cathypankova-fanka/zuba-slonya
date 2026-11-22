@@ -113,8 +113,11 @@ export const BirthdayMission: React.FC<{ character: CharacterItem; soundEnabled:
   };
 
   // 4) подарок
-  const giveGift = () => {
-    if (step !== 'gift' || !gift || opened) return;
+  const openedRef = useRef(false);
+  const giveGift = (g: string | null = gift) => {
+    if (step !== 'gift' || !g || opened || openedRef.current) return;
+    openedRef.current = true;
+    if (g !== gift) setGift(g);
     setOpened(true);
     soundEngine.playGameReward(soundEnabled);
     window.setTimeout(() => { finished.current = true; next(); }, 2400);
@@ -122,7 +125,7 @@ export const BirthdayMission: React.FC<{ character: CharacterItem; soundEnabled:
 
   const restart = () => {
     setFlags(0); setBIdx(0); setBSize(0); setCandles(0); setLit(false); setBlown(false); setGift(null); setOpened(false);
-    blowAcc.current = 0; photo.reset(); setRound((r) => r + 1); restartSteps();
+    blowAcc.current = 0; openedRef.current = false; photo.reset(); setRound((r) => r + 1); restartSteps();
   };
 
   const hintOn = useStepHint(`${step}-${candles}-${lit}-${gift}`, 2600, 8000, !doneFx && !photo.taken && !opened);
@@ -139,7 +142,7 @@ export const BirthdayMission: React.FC<{ character: CharacterItem; soundEnabled:
     ? [<Plate key="flag" src={PT('bunting')} label="" plateRef={(el) => { flagPlate.current = el; }} onPick={hangFlag} target={roomRef} onDrop={hangFlag} />]
     : step === 'gift'
       ? GIFTS.map((g, i) => <Plate key={g} src={PT(g)} label="" selected={gift === g} plateRef={(el) => { if (gift ? gift === g : i === 0) giftPlate.current = el; }}
-          onPick={() => { if (!gift || gift !== g) { setGift(g); soundEngine.playGamePop(soundEnabled, 6); } else giveGift(); }} target={friendRef} onDrop={() => { setGift(g); window.setTimeout(giveGift, 50); }} />)
+          onPick={() => { if (!gift || gift !== g) { setGift(g); soundEngine.playGamePop(soundEnabled, 6); } else giveGift(g); }} target={friendRef} onDrop={() => giveGift(g)} />)
       : undefined;
 
   const done = BALLOONS.slice(0, bIdx);
@@ -212,12 +215,12 @@ export const BirthdayMission: React.FC<{ character: CharacterItem; soundEnabled:
           )}
 
           {step === 'gift' && (
-            <div className="relative" style={{ width: 'min(30vmin, 250px)' }}>
+            <button type="button" aria-label="Подарок" onClick={() => giveGift()} className="relative" style={{ width: 'min(30vmin, 250px)' }}>
               {opened
-                ? <img src={PT('gift_open')} alt="" className="w-full animate-pop-in" />
-                : gift && <img src={PT(gift)} alt="" className="w-full animate-pop-in" />}
-              {opened && ['🎊', '🎉', '✨', '⭐'].map((e, k) => <span key={k} className="absolute text-[6vmin] r-fx" style={{ left: `${10 + k * 25}%`, top: '10%', animationDelay: `${k * 0.15}s` }}>{e}</span>)}
-            </div>
+                ? <img src={PT('gift_open')} alt="" draggable={false} className="w-full animate-pop-in pointer-events-none" />
+                : gift && <img src={PT(gift)} alt="" draggable={false} className="w-full pointer-events-none animate-[bob_1.2s_ease-in-out_infinite]" />}
+              {opened && ['🎊', '🎉', '✨', '⭐'].map((e, k) => <span key={k} className="absolute text-[6vmin] r-fx pointer-events-none" style={{ left: `${10 + k * 25}%`, top: '10%', animationDelay: `${k * 0.15}s` }}>{e}</span>)}
+            </button>
           )}
 
           {step === 'party' && (
