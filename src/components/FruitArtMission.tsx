@@ -99,14 +99,15 @@ const fruitsFor = (pic: Pic) => {
 interface Placed { p: PieceId; x: number; y: number; r: number; s: number; slot?: number }
 
 /** тарелка с кусочками (ghost — бледный образец) */
-const FruitPlate: React.FC<{ size: string; placed: Placed[]; ghost?: Slot[]; boxRef?: React.Ref<HTMLDivElement> }> = ({ size, placed, ghost, boxRef }) => (
+const FruitPlate: React.FC<{ size: string; placed: Placed[]; ghost?: Slot[]; boxRef?: React.Ref<HTMLDivElement>; onGrab?: (i: number, e: React.PointerEvent) => void; dragging?: number | null }> = ({ size, placed, ghost, boxRef, onGrab, dragging }) => (
   <div ref={boxRef} className="relative shrink-0 rounded-full" style={{ width: size, height: size, background: 'radial-gradient(circle at 50% 45%, #FFFFFF 0 60%, #F1F5F9 66%, #FFFFFF 72%, #E2E8F0 100%)', boxShadow: '0 14px 26px rgba(0,0,0,.22)' }}>
     {ghost?.map((g, i) => (
       <img key={`g${i}`} src={PIECES[g.p].src} alt="" draggable={false} className="absolute pointer-events-none"
         style={{ left: `${g.x * 100}%`, top: `${g.y * 100}%`, width: `${PIECES[g.p].w * (g.s ?? 1) * 100}%`, transform: `translate(-50%,-50%) rotate(${g.r ?? 0}deg)`, opacity: 0.22, filter: 'grayscale(.4)' }} />
     ))}
     {placed.map((q, i) => (
-      <span key={i} className="absolute pointer-events-none" style={{ left: `${q.x * 100}%`, top: `${q.y * 100}%`, width: `${PIECES[q.p].w * q.s * 100}%`, transform: `translate(-50%,-50%) rotate(${q.r}deg)`, zIndex: q.p === 'blueberry' ? 3 : q.p === 'kiwi_round' || q.p === 'banana_round' ? 2 : 1 }}>
+      <span key={i} className={`absolute ${onGrab ? 'cursor-grab touch-none' : 'pointer-events-none'}`} onPointerDown={onGrab ? (e) => onGrab(i, e) : undefined}
+        style={{ left: `${q.x * 100}%`, top: `${q.y * 100}%`, width: `${PIECES[q.p].w * q.s * 100}%`, transform: `translate(-50%,-50%) rotate(${q.r}deg) scale(${dragging === i ? 1.18 : 1})`, transition: dragging === i ? 'none' : 'transform .15s', zIndex: dragging === i ? 10 : q.p === 'blueberry' ? 3 : q.p === 'kiwi_round' || q.p === 'banana_round' ? 2 : 1 }}>
         <img src={PIECES[q.p].src} alt="" draggable={false} className="block w-full animate-pop-in" style={{ filter: 'drop-shadow(0 3px 2px rgba(0,0,0,.25))' }} />
       </span>
     ))}
@@ -245,6 +246,43 @@ export const FruitArtMission: React.FC<{ character: CharacterItem; soundEnabled:
     if (Math.hypot(x - 0.5, y - 0.5) > 0.5) return;
     put(p, { x, y });
   };
+  // уже положенный кусочек можно двигать по тарелке; утащил за край — вернулся на полочку
+  const [moving, setMoving] = useState<number | null>(null);
+  const grab = (i: number, e: React.PointerEvent) => {
+    if (step !== 'arrange' || doneFx) return;
+    e.preventDefault();
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    setMoving(i);
+    setPlaced((pl) => pl.map((q, k) => (k === i ? { ...q, slot: undefined } : q)));
+  };
+  const plateXY = (e: React.PointerEvent) => {
+    const r = plateRef.current!.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+  };
+  const moveGrab = (e: React.PointerEvent) => {
+    if (moving == null) return;
+    const { x, y } = plateXY(e);
+    setPlaced((pl) => pl.map((q, k) => (k === moving ? { ...q, x, y } : q)));
+  };
+  const dropGrab = (e: React.PointerEvent) => {
+    if (moving == null) return;
+    const i = moving; setMoving(null);
+    const { x, y } = plateXY(e);
+    if (Math.hypot(x - 0.5, y - 0.5) > 0.55) { // за край — убираем обратно
+      soundEngine.playGamePop(soundEnabled, 1);
+      setPlaced((pl) => pl.filter((_, k) => k !== i));
+      return;
+    }
+    setPlaced((pl) => {
+      const q = pl[i];
+      const taken = new Set(pl.map((z, k) => (k === i ? undefined : z.slot)).filter((v) => v !== undefined));
+      let best = -1, bd = 0.16;
+      pic.slots.forEach((sl, k) => { if (sl.p === q.p && !taken.has(k)) { const d = Math.hypot(sl.x - x, sl.y - y); if (d < bd) { bd = d; best = k; } } });
+      const sl = best >= 0 ? pic.slots[best] : null;
+      soundEngine.playGamePop(soundEnabled, 5);
+      return pl.map((z, k) => (k === i ? (sl ? { ...z, x: sl.x, y: sl.y, r: sl.r ?? 0, s: sl.s ?? 1, slot: best } : { ...z, x, y }) : z));
+    });
+  };
   const allFilled = filled.size >= pic.slots.length;
   const finish = () => { if (doneFx || filled.size < Math.ceil(pic.slots.length * 0.6)) return; next('fa_ok'); };
 
@@ -370,7 +408,9 @@ export const FruitArtMission: React.FC<{ character: CharacterItem; soundEnabled:
 
       {step === 'arrange' && (
         <div className="flex flex-col items-center gap-[3vmin]">
-          <FruitPlate size={PLATE} placed={placed} ghost={pic.slots.filter((_, i) => !filled.has(i))} boxRef={plateRef} />
+          <div onPointerMove={moveGrab} onPointerUp={dropGrab} onPointerCancel={dropGrab}>
+            <FruitPlate size={PLATE} placed={placed} ghost={pic.slots.filter((_, i) => !filled.has(i))} boxRef={plateRef} onGrab={grab} dragging={moving} />
+          </div>
           <DoneButton ref={doneRef} show={filled.size >= Math.ceil(pic.slots.length * 0.6)} onClick={finish} />
         </div>
       )}
