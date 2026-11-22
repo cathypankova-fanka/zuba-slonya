@@ -71,6 +71,9 @@ export default defineConfig(() => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,jpg,webp,svg,woff,woff2}'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          // Только сборочные js/css с хэшем в имени не требуют ревизии. Картинки из public/assets
+          // (герои, реакции) меняются под тем же именем — им нужна ревизия, иначе кэш навсегда старый.
+          dontCacheBustURLsMatching: /-[A-Za-z0-9_-]{8}\.(?:js|css)$/,
           runtimeCaching: [
             {
               // Голоса помощников (mp3): кэшируются при первом проигрывании, дальше работают офлайн
