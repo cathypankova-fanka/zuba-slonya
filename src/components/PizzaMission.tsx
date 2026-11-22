@@ -29,6 +29,14 @@ const RECIPES: Recipe[] = [
   { id: 'pepperoni', title: 'Пепперони', sauce: 'tomato', toppings: ['pepperoni', 'olive'], perTopping: 3 },
   { id: 'veggie', title: 'Овощная', sauce: 'pesto', toppings: ['mushroom', 'pepper', 'broccoli', 'corn'], perTopping: 2 },
   { id: 'hawaii', title: 'Гавайская', sauce: 'cream', toppings: ['ham', 'pineapple'], perTopping: 3 },
+  { id: 'mushroom', title: 'Грибная', sauce: 'cream', toppings: ['mushroom', 'cheese_chunk', 'basil'], perTopping: 2 },
+  { id: 'sea', title: 'Морская', sauce: 'tomato', toppings: ['shrimp', 'olive', 'basil'], perTopping: 2 },
+  { id: 'ham_mush', title: 'Ветчина и грибы', sauce: 'tomato', toppings: ['ham', 'mushroom'], perTopping: 3 },
+  { id: 'cheesy', title: 'Четыре сыра', sauce: 'cheese', toppings: ['cheese_chunk'], perTopping: 6 },
+  { id: 'green', title: 'Зелёная', sauce: 'pesto', toppings: ['broccoli', 'pepper', 'basil'], perTopping: 2 },
+  { id: 'sunny', title: 'Солнышко', sauce: 'cheese', toppings: ['corn', 'pineapple', 'tomato'], perTopping: 2 },
+  { id: 'kids', title: 'Детская', sauce: 'tomato', toppings: ['ham', 'corn', 'cheese_chunk'], perTopping: 2 },
+  { id: 'spicy', title: 'Пепперони с перчиком', sauce: 'tomato', toppings: ['pepperoni', 'pepper', 'olive'], perTopping: 2 },
 ];
 
 const STEPS = [
@@ -407,12 +415,12 @@ export const PizzaMission: React.FC<{ character: CharacterItem; soundEnabled: bo
       recipe={step !== 'pick' && step !== 'serve' ? <PizzaPreview r={recipe} size="92%" /> : undefined}
       tray={tray}>
       {step === 'pick' && (
-        <div className="grid grid-cols-2 gap-[3vmin]">
+        <div className={`grid ${window.innerHeight > window.innerWidth * 1.2 ? 'grid-cols-3' : 'grid-cols-6 pr-[min(15vmin,140px)]'} gap-[2vmin] px-2`}>
           {RECIPES.map((r) => (
             <button key={r.id} type="button" aria-label={r.title}
               onClick={() => { if (doneFx) return; setRecipe(r); soundEngine.playGameOk(soundEnabled); window.setTimeout(() => goNext(), 250); }}
               className="rounded-full bg-white/90 shadow-xl p-[1.5vmin] active:scale-95 transition-transform">
-              <PizzaPreview r={r} size="min(32vmin, 260px)" />
+              <PizzaPreview r={r} size={window.innerHeight > window.innerWidth * 1.2 ? 'min(25vw, 14vh)' : 'min(15vmin, 150px)'} />
             </button>
           ))}
         </div>
