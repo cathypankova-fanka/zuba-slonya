@@ -31,6 +31,7 @@ import { CoinShopGame } from './CoinShopGame';
 import { FishingGame } from './FishingGame';
 import { LiftGame } from './LiftGame';
 import { TrainGame } from './TrainGame';
+import { DiceGame } from './DiceGame';
 import { RainMission } from './RainMission';
 import { FriendVisit } from './PlayKit';
 
@@ -68,6 +69,7 @@ export const PlayRouter: React.FC<{ mode: PlayMode | string; character: Characte
     case 'fishing': return <FishingGame {...p} />;
     case 'lift': return <LiftGame {...p} />;
     case 'train': return <TrainGame {...p} />;
+    case 'dice': return <DiceGame {...p} />;
     case 'rain': return <RainMission {...p} />;
     case 'shadow': return <ShopMission {...p} />;
     case 'face': return <FaceMission {...p} />;

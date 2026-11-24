@@ -72,6 +72,7 @@ export const MAP_MARKERS: MapMarker[] = [
   { mode: 'fishing', img: 'fishing', aria: 'Рыбалка', x: 9000, y: 2520 },
   { mode: 'lift', img: 'lift', aria: 'Лифт в замке', x: 4000, y: 800 },
   { mode: 'train', img: 'train', aria: 'Паровозик', x: 7250, y: 520 },
+  { mode: 'dice', img: 'dice', aria: 'Кубик-ходилка', x: 2470, y: 3700 },
 ];
 
 export interface MapDecor {

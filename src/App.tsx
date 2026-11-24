@@ -174,6 +174,7 @@ const MODE_TITLES: Record<AllGameMode, string> = {
   fishing: 'Рыбалка',
   lift: 'Лифт в замке',
   train: 'Паровозик',
+  dice: 'Кубик-ходилка',
   rain: 'Дождик и лужи',
 };
 
