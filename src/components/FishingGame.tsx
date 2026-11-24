@@ -50,6 +50,9 @@ export const FishingGame: React.FC<{ character: CharacterItem; soundEnabled: boo
   const idc = useRef(0);
   const busy = useRef(false);
   const caughtRef = useRef(0);
+  // сколько рыбок с нужной цифрой плавает — ловить можно (и нужно) всех
+  const targetsRef = useRef(2);
+  const [targets, setTargets] = useState(2);
   const task = tasks[ti];
   if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__fishDbg = { fish, hook, holding, hooked };
   const done = ti >= tasks.length;
@@ -57,7 +60,7 @@ export const FishingGame: React.FC<{ character: CharacterItem; soundEnabled: boo
   // новая стайка рыбок под задание: нужная цифра обязательно есть (2 раза)
   const spawn = (t: Task) => {
     const nums: number[] = [];
-    if (t.kind === 'find') { nums.push(t.n, t.n); while (nums.length < 7) { const k = 1 + Math.floor(Math.random() * 9); if (k !== t.n) nums.push(k); } }
+    if (t.kind === 'find') { const k = 2 + Math.floor(Math.random() * 2); for (let i = 0; i < k; i++) nums.push(t.n); targetsRef.current = k; setTargets(k); while (nums.length < 7) { const k = 1 + Math.floor(Math.random() * 9); if (k !== t.n) nums.push(k); } }
     else while (nums.length < 7) nums.push(1 + Math.floor(Math.random() * 9));
     fish.current = nums.map((n, i) => ({
       id: ++idc.current, n, c: COLORS[i % COLORS.length], x: Math.random(), y: 0.32 + (i / nums.length) * 0.58,
@@ -137,7 +140,7 @@ export const FishingGame: React.FC<{ character: CharacterItem; soundEnabled: boo
     setBucket((b) => [...b, { n: f.n, c: f.c }]);
     const k = ++caughtRef.current; setCaught(k);
     if (task.kind === 'count') playVoice(`d_${k}`, soundEnabled, undefined, 'replace'); else say('fi_yes', soundEnabled);
-    const need = task.kind === 'count' ? task.n : 1;
+    const need = task.kind === 'count' ? task.n : targetsRef.current;
     if (k >= need) {
       busy.current = true;
       window.setTimeout(() => { busy.current = false; setTi((i) => i + 1); }, 1800);
@@ -169,7 +172,16 @@ export const FishingGame: React.FC<{ character: CharacterItem; soundEnabled: boo
         <div ref={bucketRef} className="flex items-center gap-[2vmin] rounded-[2rem] bg-white/85 shadow-xl px-[2.5vmin] py-[1vmin]">
           <span className="text-[min(9vmin,64px)] leading-none">🪣</span>
           {task.kind === 'find'
-            ? <span className="font-black text-[#0369A1] leading-none" style={{ fontSize: 'min(13vmin, 96px)' }}>{task.n}</span>
+            ? (
+              <span className="flex items-center gap-[1.5vmin]">
+                <span className="font-black text-[#0369A1] leading-none" style={{ fontSize: 'min(13vmin, 96px)' }}>{task.n}</span>
+                <span className="flex gap-[0.8vmin]">
+                  {Array.from({ length: targets }).map((_, i) => (
+                    <span key={i} className="rounded-full border-4 border-[#0369A1] transition-colors" style={{ width: 'min(5vmin, 38px)', height: 'min(5vmin, 38px)', background: i < caught ? '#0EA5E9' : '#fff' }} />
+                  ))}
+                </span>
+              </span>
+            )
             : (
               <span className="flex gap-[1vmin]">
                 {Array.from({ length: task.n }).map((_, i) => (
@@ -177,7 +189,6 @@ export const FishingGame: React.FC<{ character: CharacterItem; soundEnabled: boo
                 ))}
               </span>
             )}
-          {task.kind === 'find' && caught > 0 && <span className="text-[min(8vmin,56px)]">✅</span>}
         </div>
 
         {/* пруд */}
