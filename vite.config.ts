@@ -38,8 +38,8 @@ export default defineConfig(() => {
         ],
         manifest: {
           id: BASE,
-          name: 'Анюткина игра',
-          short_name: 'Анюткина игра',
+          name: 'Анюткины игры',
+          short_name: 'Анюткины игры',
           description:
             'Весёлая игра для малышей: рисуем фейс-арт и украшаем футболки с персонажами сказок и семьи.',
           theme_color: '#FAF8F4',
