@@ -29,6 +29,7 @@ import { MarbleRun } from './MarbleRun';
 import { FruitArtMission } from './FruitArtMission';
 import { CoinShopGame } from './CoinShopGame';
 import { FishingGame } from './FishingGame';
+import { LiftGame } from './LiftGame';
 import { RainMission } from './RainMission';
 import { FriendVisit } from './PlayKit';
 
@@ -64,6 +65,7 @@ export const PlayRouter: React.FC<{ mode: PlayMode | string; character: Characte
     case 'fruitart': return <FruitArtMission {...p} />;
     case 'coins': return <CoinShopGame {...p} />;
     case 'fishing': return <FishingGame {...p} />;
+    case 'lift': return <LiftGame {...p} />;
     case 'rain': return <RainMission {...p} />;
     case 'shadow': return <ShopMission {...p} />;
     case 'face': return <FaceMission {...p} />;

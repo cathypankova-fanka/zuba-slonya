@@ -398,3 +398,5 @@ body[data-cook='1'] .helper-corner {
 /* печенье: посыпка падает из солонки; формочка вдавливается в тесто */
 @keyframes sprFall { 0% { transform: translate(-50%, -50%); opacity: .9; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))); opacity: 1; } }
 @keyframes pressCut { 0% { transform: translate(-50%, -110%) scale(1.2); opacity: 0; } 25% { transform: translate(-50%, -70%) scale(1.12); opacity: 1; } 45% { transform: translate(-50%, -50%) scale(.96); opacity: 1; } 60% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -110%) scale(1.15); opacity: 0; } }
+/* лифт: пульт качается при неверной кнопке */
+@keyframes shakeX { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-10px); } 40% { transform: translateX(10px); } 60% { transform: translateX(-7px); } 80% { transform: translateX(7px); } }

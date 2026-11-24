@@ -172,6 +172,7 @@ const MODE_TITLES: Record<AllGameMode, string> = {
   fruitart: 'Фруктовые картинки',
   coins: 'Магазин с монетками',
   fishing: 'Рыбалка',
+  lift: 'Лифт в замке',
   rain: 'Дождик и лужи',
 };
 

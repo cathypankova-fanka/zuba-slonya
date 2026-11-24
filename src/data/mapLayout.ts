@@ -70,6 +70,7 @@ export const MAP_MARKERS: MapMarker[] = [
   { mode: 'fruitart', img: 'fruitart', aria: 'Фруктовые картинки', x: 6100, y: 3150 },
   { mode: 'coins', img: 'coins', aria: 'Магазин с монетками', x: 620, y: 2380 },
   { mode: 'fishing', img: 'fishing', aria: 'Рыбалка', x: 9000, y: 2520 },
+  { mode: 'lift', img: 'lift', aria: 'Лифт в замке', x: 4000, y: 800 },
 ];
 
 export interface MapDecor {
