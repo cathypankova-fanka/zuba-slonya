@@ -1,4 +1,13 @@
-import { getActiveHelper } from './activeHelper';
+import { getActiveHelper, HelperId } from './activeHelper';
+
+/** Какие фразы записаны у каждого помощника (по файлам public/assets/voices/<помощник>/<id>.mp3). */
+const AVAILABLE = new Set(
+  Object.keys(import.meta.glob('/public/assets/voices/*/*.mp3')).map((p) => p.replace('/public/assets/voices/', '').replace(/\.mp3$/, '')),
+);
+const OTHER: Record<HelperId, HelperId> = { zuba: 'slonya', slonya: 'zuba' };
+/** Чей голос взять: выбранного помощника, а если у него этой фразы нет — другого (новые фразы пишем только Зубой). */
+const voiceOwner = (id: string, helper: HelperId): HelperId =>
+  AVAILABLE.has(`${helper}/${id}`) || !AVAILABLE.has(`${OTHER[helper]}/${id}`) ? helper : OTHER[helper];
 
 let current: HTMLAudioElement | null = null;
 let globalOn = true;
@@ -6,7 +15,9 @@ let globalOn = true;
 export const setVoiceEnabled = (v: boolean) => { globalOn = v; };
 export const isVoiceEnabled = () => globalOn;
 
-export const voiceUrl = (id: string, helper = getActiveHelper()) => `/assets/voices/${helper}/${id}.mp3`;
+export const voiceUrl = (id: string, helper = getActiveHelper()) => `/assets/voices/${voiceOwner(id, helper)}/${id}.mp3`;
+/** Есть ли фраза хоть у одного помощника. */
+export const hasVoice = (id: string) => AVAILABLE.has(`zuba/${id}`) || AVAILABLE.has(`slonya/${id}`);
 
 let playing = false;
 let pending: { id: string; onMissing?: () => void } | null = null;

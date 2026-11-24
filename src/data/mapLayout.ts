@@ -68,6 +68,8 @@ export const MAP_MARKERS: MapMarker[] = [
   { mode: 'domino', img: 'domino', aria: 'Домино', x: 3550, y: 3150 },
   { mode: 'marble', img: 'marble', aria: 'Шарики', x: 3300, y: 1400 },
   { mode: 'fruitart', img: 'fruitart', aria: 'Фруктовые картинки', x: 6100, y: 3150 },
+  { mode: 'coins', img: 'coins', aria: 'Магазин с монетками', x: 620, y: 2380 },
+  { mode: 'fishing', img: 'fishing', aria: 'Рыбалка', x: 9000, y: 2520 },
 ];
 
 export interface MapDecor {
