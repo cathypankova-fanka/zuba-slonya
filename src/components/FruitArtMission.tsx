@@ -87,6 +87,63 @@ const PICS: Pic[] = [
     { p: 'strawberry_half', x: 0.5, y: 0.54, r: 180, s: 0.7 },
     ...ring('orange_seg', 3, 0.5, 0.52, 0.18, 0.75, true, Math.PI * 0.3, Math.PI * 0.7),
   ] },
+  { id: 'bunny', name: 'Зайчик', slots: [
+    { p: 'apple_wedge', x: 0.4, y: 0.24, r: -80, s: 1.2 }, { p: 'apple_wedge', x: 0.6, y: 0.24, r: 80, s: 1.2 },
+    { p: 'banana_round', x: 0.5, y: 0.58, s: 2.6 },
+    { p: 'blueberry', x: 0.43, y: 0.53 }, { p: 'blueberry', x: 0.57, y: 0.53 },
+    { p: 'strawberry_half', x: 0.5, y: 0.63, r: 180, s: 0.5 },
+    { p: 'grape', x: 0.35, y: 0.66, s: 0.7 }, { p: 'grape', x: 0.65, y: 0.66, s: 0.7 },
+  ] },
+  { id: 'butterfly', name: 'Бабочка', slots: [
+    { p: 'kiwi_round', x: 0.32, y: 0.38, s: 1.2 }, { p: 'kiwi_round', x: 0.68, y: 0.38, s: 1.2 },
+    { p: 'strawberry_half', x: 0.35, y: 0.66, r: -30, s: 1.1 }, { p: 'strawberry_half', x: 0.65, y: 0.66, r: 30, s: 1.1 },
+    { p: 'banana_round', x: 0.5, y: 0.32, s: 0.7 }, { p: 'banana_round', x: 0.5, y: 0.44, s: 0.7 },
+    { p: 'banana_round', x: 0.5, y: 0.56, s: 0.7 }, { p: 'banana_round', x: 0.5, y: 0.68, s: 0.7 },
+    { p: 'blueberry', x: 0.42, y: 0.17, s: 0.8 }, { p: 'blueberry', x: 0.58, y: 0.17, s: 0.8 },
+  ] },
+  { id: 'hedgehog', name: 'Ёжик', slots: [
+    ...ring('grape', 7, 0.46, 0.58, 0.27, 0.85, false, Math.PI * 1.0, Math.PI * 1.85),
+    { p: 'banana_round', x: 0.46, y: 0.6, s: 2.1 },
+    { p: 'orange_seg', x: 0.72, y: 0.62, r: 0, s: 0.7 },
+    { p: 'blueberry', x: 0.83, y: 0.62, s: 0.8 },
+    { p: 'blueberry', x: 0.62, y: 0.55, s: 0.6 },
+    { p: 'strawberry_half', x: 0.3, y: 0.82, r: 0, s: 0.55 },
+  ] },
+  { id: 'ladybug', name: 'Божья коровка', slots: [
+    { p: 'strawberry_half', x: 0.4, y: 0.57, r: -90, s: 1.7 }, { p: 'strawberry_half', x: 0.6, y: 0.57, r: 90, s: 1.7 },
+    { p: 'grape', x: 0.5, y: 0.3, s: 1.5 },
+    { p: 'blueberry', x: 0.4, y: 0.5 }, { p: 'blueberry', x: 0.6, y: 0.5 }, { p: 'blueberry', x: 0.42, y: 0.66 }, { p: 'blueberry', x: 0.58, y: 0.66 },
+    { p: 'banana_round', x: 0.4, y: 0.15, s: 0.5 }, { p: 'banana_round', x: 0.6, y: 0.15, s: 0.5 },
+  ] },
+  { id: 'turtle', name: 'Черепашка', slots: [
+    { p: 'kiwi_round', x: 0.5, y: 0.52, s: 1.6 },
+    ...ring('grape', 8, 0.5, 0.52, 0.24, 0.8),
+    { p: 'banana_round', x: 0.5, y: 0.18, s: 1.1 },
+    { p: 'blueberry', x: 0.45, y: 0.16, s: 0.5 }, { p: 'blueberry', x: 0.55, y: 0.16, s: 0.5 },
+    { p: 'apple_wedge', x: 0.24, y: 0.34, r: -45, s: 0.6 }, { p: 'apple_wedge', x: 0.76, y: 0.34, r: 45, s: 0.6 },
+    { p: 'apple_wedge', x: 0.24, y: 0.72, r: -135, s: 0.6 }, { p: 'apple_wedge', x: 0.76, y: 0.72, r: 135, s: 0.6 },
+  ] },
+  { id: 'caterpillar', name: 'Гусеница', slots: [
+    { p: 'kiwi_round', x: 0.18, y: 0.62 }, { p: 'kiwi_round', x: 0.32, y: 0.55 }, { p: 'kiwi_round', x: 0.46, y: 0.62 },
+    { p: 'kiwi_round', x: 0.6, y: 0.55 },
+    { p: 'orange_seg', x: 0.76, y: 0.46, r: 0, s: 1.05 },
+    { p: 'blueberry', x: 0.74, y: 0.42, s: 0.6 }, { p: 'blueberry', x: 0.82, y: 0.42, s: 0.6 },
+    { p: 'strawberry_half', x: 0.78, y: 0.27, r: 0, s: 0.45 },
+    { p: 'grape', x: 0.18, y: 0.76, s: 0.5 }, { p: 'grape', x: 0.32, y: 0.69, s: 0.5 }, { p: 'grape', x: 0.46, y: 0.76, s: 0.5 }, { p: 'grape', x: 0.6, y: 0.69, s: 0.5 },
+  ] },
+  { id: 'rainbow', name: 'Радуга', slots: [
+    ...ring('strawberry_half', 7, 0.5, 0.7, 0.37, 0.72, true, Math.PI * 1.02, Math.PI * 1.98),
+    ...ring('orange_seg', 6, 0.5, 0.7, 0.26, 0.62, true, Math.PI * 1.05, Math.PI * 1.95),
+    ...ring('banana_round', 5, 0.5, 0.7, 0.16, 0.62, false, Math.PI * 1.08, Math.PI * 1.92),
+    { p: 'grape', x: 0.14, y: 0.74 }, { p: 'grape', x: 0.22, y: 0.76 }, { p: 'grape', x: 0.78, y: 0.76 }, { p: 'grape', x: 0.86, y: 0.74 },
+  ] },
+  { id: 'bear', name: 'Мишка', slots: [
+    { p: 'banana_round', x: 0.3, y: 0.24, s: 1.3 }, { p: 'banana_round', x: 0.7, y: 0.24, s: 1.3 },
+    ...ring('orange_seg', 8, 0.5, 0.52, 0.2, 0.8),
+    { p: 'blueberry', x: 0.42, y: 0.46 }, { p: 'blueberry', x: 0.58, y: 0.46 },
+    { p: 'banana_round', x: 0.5, y: 0.58, s: 1.1 },
+    { p: 'grape', x: 0.5, y: 0.55, s: 0.6 },
+  ] },
 ];
 
 /** какие фрукты нужны для картинки (сколько штук) */
@@ -323,11 +380,11 @@ export const FruitArtMission: React.FC<{ character: CharacterItem; soundEnabled:
       recipe={step !== 'pick' && step !== 'serve' ? <div className="w-[86%]"><FruitPlate size="100%" placed={picPlaced(pic)} /></div> : undefined}
       tray={tray}>
       {step === 'pick' && (
-        <div className={`grid ${portrait ? 'grid-cols-2' : 'grid-cols-3 pr-[min(15vmin,140px)]'} gap-[3vmin] px-3`}>
+        <div className={`grid ${portrait ? 'grid-cols-3' : 'grid-cols-5 pr-[min(15vmin,140px)]'} gap-[2vmin] px-3 max-h-full overflow-y-auto py-2`}>
           {PICS.map((p) => (
             <button key={p.id} type="button" aria-label={p.name} onClick={() => { if (doneFx) return; setPic(p); next(); }}
-              className="rounded-[2rem] bg-white/70 shadow-xl p-[1.5vmin] active:scale-95 transition-transform flex justify-center">
-              <FruitPlate size={portrait ? 'min(36vw, 18vh)' : 'min(24vmin, 210px)'} placed={picPlaced(p)} />
+              className="rounded-[1.6rem] bg-white/70 shadow-xl p-[1.2vmin] active:scale-95 transition-transform flex justify-center">
+              <FruitPlate size={portrait ? 'min(26vw, 14vh)' : 'min(17vmin, 160px)'} placed={picPlaced(p)} />
             </button>
           ))}
         </div>
