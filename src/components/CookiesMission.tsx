@@ -17,14 +17,14 @@ const SHAPES = [
   { id: 'star', name: 'Звёздочка', cutter: P('cutter_star'), cookie: P('cookie_star') },
   { id: 'heart', name: 'Сердечко', cutter: P('cutter_heart'), cookie: P('cookie_heart') },
   { id: 'bear', name: 'Мишка', cutter: P('cutter_bear'), cookie: P('cookie_bear') },
-  // печенье-герои (формочкой служит сама картинка печеньки)
-  { id: 'zuba', name: 'Зуба', cutter: P('cookie_zuba'), cookie: P('cookie_zuba') },
-  { id: 'slonya', name: 'Слоня', cutter: P('cookie_slonya'), cookie: P('cookie_slonya') },
-  { id: 'bulkis', name: 'Булкис', cutter: P('cookie_bulkis'), cookie: P('cookie_bulkis') },
-  { id: 'hihi', name: 'Хи-Хи', cutter: P('cookie_hihi'), cookie: P('cookie_hihi') },
-  { id: 'vau', name: 'Вау', cutter: P('cookie_vau'), cookie: P('cookie_vau') },
-  { id: 'piu', name: 'Пиу', cutter: P('cookie_piu'), cookie: P('cookie_piu') },
-  { id: 'oi', name: 'Ой', cutter: P('cookie_oi'), cookie: P('cookie_oi') },
+  // печенье-герои: свои формочки (assets/newgames/cutters_*.png) и печенье (cookies_*.png)
+  { id: 'zuba', name: 'Зуба', cutter: P('cutter_zuba'), cookie: P('cookie_zuba') },
+  { id: 'slonya', name: 'Слоня', cutter: P('cutter_slonya'), cookie: P('cookie_slonya') },
+  { id: 'bulkis', name: 'Булкис', cutter: P('cutter_bulkis'), cookie: P('cookie_bulkis') },
+  { id: 'hihi', name: 'Хи-Хи', cutter: P('cutter_hihi'), cookie: P('cookie_hihi') },
+  { id: 'vau', name: 'Вау', cutter: P('cutter_vau'), cookie: P('cookie_vau') },
+  { id: 'piu', name: 'Пиу', cutter: P('cutter_piu'), cookie: P('cookie_piu') },
+  { id: 'oi', name: 'Ой', cutter: P('cutter_oi'), cookie: P('cookie_oi') },
 ];
 const ICINGS = [
   { id: 'pink', hex: '#F9A8D4', name: 'Розовая глазурь' },
@@ -151,6 +151,7 @@ export const CookiesMission: React.FC<{ character: CharacterItem; soundEnabled: 
 
   const restart = () => {
     setRoll(0); setCookies([]); setStrays([]); setFlying([]); advanced.current = ''; doneCookies.current = new Set();
+    cutRef.current = 0; setScrap(false);
     restartSteps();
   };
   useEffect(() => { if (step === 'serve') setServedKey((k) => k + 1); }, [step]);
@@ -174,19 +175,35 @@ export const CookiesMission: React.FC<{ character: CharacterItem; soundEnabled: 
   const flour = useMemo(() => Array.from({ length: 34 }, () => ({ x: 8 + Math.random() * 84, y: 8 + Math.random() * 84, s: 0.4 + Math.random() * 1.1 })), []);
 
   // ---------- 2) вырезать ----------
-  const cutAt = (x: number, y: number) => {
-    if (step !== 'cut' || doneFx || cookies.length >= NEED) return;
+  // формочка опускается → вдавливается → поднимается; на тесте остаётся прорезанная печенька.
+  // Когда вырезаны все — лишнее тесто снимается, печеньки остаются на доске.
+  const cutRef = useRef(0);
+  const [scrap, setScrap] = useState(false);
+  const cutAt = (x: number, y: number, shp = shape) => {
+    if (step !== 'cut' || doneFx || cutRef.current >= NEED) return;
     const dx = (x - 0.5) / 0.44, dy = (y - 0.5) / 0.4;
     if (dx * dx + dy * dy > 1) return;
     if (cookies.some((c) => Math.hypot((c.x - x) * 1.6, c.y - y) < 0.26)) return;
-    soundEngine.playGamePop(soundEnabled, 4 + cookies.length);
-    setPress({ x, y, id: Date.now(), shape });
-    const n = [...cookies, { shape, x, y, dabs: [], spr: [] }]; setCookies(n);
-    if (n.length >= NEED) goNext('cut', 700);
+    const k = ++cutRef.current;
+    setPress({ x, y, id: Date.now(), shape: shp });
+    window.setTimeout(() => {
+      soundEngine.playGamePop(soundEnabled, 4 + k);
+      setCookies((cs) => [...cs, { shape: shp, x, y, dabs: [], spr: [] }]);
+    }, 230);
+    if (k >= NEED) {
+      window.setTimeout(() => { setScrap(true); soundEngine.playGameReward(soundEnabled); }, 900);
+      goNext('cut', 2100);
+    }
   };
   const doughClick = (e: React.MouseEvent) => {
     const r = centerRef.current!.getBoundingClientRect();
     cutAt((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+  };
+  const dropCutter = (shp: string) => (sx: number, sy: number) => {
+    const r = centerRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setShape(shp);
+    cutAt((sx - r.left) / r.width, (sy - r.top) / r.height, shp);
   };
 
   // ---------- координаты на противне ----------
@@ -304,7 +321,7 @@ export const CookiesMission: React.FC<{ character: CharacterItem; soundEnabled: 
   if (step === 'roll' || step === 'icing' || step === 'sprinkle') hintKind = 'rub';
 
   const tray =
-    step === 'cut' ? SHAPES.map((s) => <Plate key={s.id} src={s.cutter} label={s.name} selected={shape === s.id} onPick={() => setShape(s.id)} />)
+    step === 'cut' ? SHAPES.map((s) => <Plate key={s.id} src={s.cutter} label={s.name} selected={shape === s.id} onPick={() => setShape(s.id)} target={centerRef} onDrop={dropCutter(s.id)} />)
     : step === 'icing' ? ICINGS.map((i) => <Plate key={i.id} src={swatch(i.hex)} label={i.name} selected={icing === i.id} onPick={() => setIcing(i.id)} />)
     : step === 'sprinkle' ? SPRINKLES.map((s) => <Plate key={s.id} src={sprSwatch(s.id, s.colors)} label={s.name} selected={sprKind === s.id} onPick={() => setSprKind(s.id)} />)
     : undefined;
@@ -336,18 +353,28 @@ export const CookiesMission: React.FC<{ character: CharacterItem; soundEnabled: 
             {/* деревянная доска */}
             <div className="absolute inset-0 rounded-[8%/12%]" style={{ background: 'repeating-linear-gradient(90deg, #D9A066 0 22px, #CF955A 22px 26px, #DCA56C 26px 60px)', boxShadow: '0 14px 24px rgba(90,50,10,.35), inset 0 2px 0 rgba(255,255,255,.35)' }} />
             {flour.map((f, i) => <span key={i} className="absolute rounded-full bg-white/80 pointer-events-none" style={{ left: `${f.x}%`, top: `${f.y}%`, width: `${f.s}vmin`, height: `${f.s}vmin`, opacity: 0.35 + (1 - roll) * 0.4 }} />)}
-            <div className="absolute rounded-[46%] transition-all duration-200 pointer-events-none" style={{
+            {/* пласт теста; после вырезания всех печенек «лишнее тесто» поднимается и уходит */}
+            <div className="absolute rounded-[46%] pointer-events-none" style={{
               left: `${50 - (14 + roll * 34)}%`, width: `${2 * (14 + roll * 34)}%`, top: `${50 - (16 + roll * 26)}%`, height: `${2 * (16 + roll * 26)}%`,
               background: 'radial-gradient(circle at 40% 35%, #FDF0D8, #EFC98F)', boxShadow: '0 10px 18px rgba(120,70,20,.3), inset 0 -6px 10px rgba(160,100,40,.25)',
+              transition: scrap ? 'transform 1s ease-in, opacity 1s ease-in' : 'all .2s',
+              transform: scrap ? 'translate(60%, -40%) rotate(14deg) scale(.85)' : 'none', opacity: scrap ? 0 : 1,
             }} />
             {cookies.map((c, i) => (
-              <div key={i} className="absolute animate-pop-in" style={{ left: `${c.x * 100}%`, top: `${c.y * 100}%`, width: '17%', height: '27%', transform: 'translate(-50%,-50%)' }}>
-                <img src={SHAPES.find((s) => s.id === c.shape)!.cookie} alt="" className="w-full h-full object-contain" style={{ filter: 'brightness(1.28) saturate(0.55) drop-shadow(0 0 2px #B07A3A)' }} />
+              <div key={i} className="absolute" style={{ left: `${c.x * 100}%`, top: `${c.y * 100}%`, width: '17%', height: '27%', transform: 'translate(-50%,-50%)' }}>
+                <img src={SHAPES.find((s) => s.id === c.shape)!.cookie} alt="" className="w-full h-full object-contain"
+                  style={{
+                    // сырое тесто того же цвета, что и пласт; прорезь — тёмная тонкая линия по контуру
+                    filter: scrap
+                      ? 'sepia(.45) saturate(.75) brightness(1.14) drop-shadow(0 4px 4px rgba(90,50,10,.35))'
+                      : 'sepia(.45) saturate(.75) brightness(1.14) drop-shadow(0 0 0.6px #8A5A2B) drop-shadow(0 0 0.6px #8A5A2B)',
+                    transition: 'filter .6s',
+                  }} />
               </div>
             ))}
             {press && (
-              <img key={press.id} src={SHAPES.find((s) => s.id === press.shape)!.cutter} alt="" className="absolute pointer-events-none animate-[pressCut_.5s_ease-out_forwards]"
-                style={{ left: `${press.x * 100}%`, top: `${press.y * 100}%`, width: '19%' }} />
+              <img key={press.id} src={SHAPES.find((s) => s.id === press.shape)!.cutter} alt="" className="absolute pointer-events-none animate-[pressCut_.6s_ease-in-out_forwards]"
+                style={{ left: `${press.x * 100}%`, top: `${press.y * 100}%`, width: '20%' }} />
             )}
             {step === 'roll' && (
               <img src={P('rolling_pin')} alt="" draggable={false} className="absolute w-[44%] pointer-events-none transition-all duration-75"
