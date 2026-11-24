@@ -58,6 +58,69 @@ const BOARDS: Board[] = (() => {
     },
     { segs: { a: { pts: st, cup: 0 } }, start: 'a', bells: bellsOn('a', st).filter((_, i) => i % 3 !== 0), cups: [{ x: st[st.length - 1][0], y: 0.93, c: '#FBBF24' }], switches: [] },
   ];
+
+  // 4. слалом: шарик петляет из стороны в сторону, колокольчик в каждой крайней точке
+  const sl: Pt[] = [[0.5, 0.05]];
+  for (let k = 0; k <= 48; k++) { const t = k / 48; sl.push([0.5 + 0.36 * Math.sin(t * Math.PI * 7), 0.09 + t * 0.78]); }
+  sl.push([0.5, 0.9]);
+  const slBells: Bell[] = [];
+  { let total = 0; const acc = [0]; for (let i = 1; i < sl.length; i++) { total += Math.hypot(sl[i][0] - sl[i - 1][0], sl[i][1] - sl[i - 1][1]); acc.push(total); }
+    let n = 0; for (let i = 2; i < sl.length - 2; i++) { const d0 = sl[i][0] - sl[i - 1][0], d1 = sl[i + 1][0] - sl[i][0]; if (d0 * d1 < 0) { slBells.push({ seg: 'a', at: acc[i] / total, f: NOTES[n % NOTES.length], c: BELL_C[n % BELL_C.length] }); n++; } } }
+  boards.push({ segs: { a: { pts: sl, cup: 0 } }, start: 'a', bells: slBells, cups: [{ x: 0.5, y: 0.93, c: '#A78BFA' }], switches: [] });
+
+  // 5. мёртвая петля
+  const lp: Pt[] = [[0.14, 0.05], [0.14, 0.1], [0.3, 0.3], [0.52, 0.66]];
+  for (let k = 0; k <= 24; k++) { const a = Math.PI / 2 - (k / 24) * Math.PI * 2; lp.push([0.6 + Math.cos(a) * 0.16, 0.5 + Math.sin(a) * 0.16]); }
+  lp.push([0.78, 0.7], [0.86, 0.8], [0.86, 0.88]);
+  boards.push({ segs: { a: { pts: lp, cup: 0 } }, start: 'a', bells: [
+    { seg: 'a', at: 0.12, f: 523, c: BELL_C[0] }, { seg: 'a', at: 0.45, f: 659, c: BELL_C[2] }, { seg: 'a', at: 0.62, f: 784, c: BELL_C[4] }, { seg: 'a', at: 0.78, f: 1046, c: BELL_C[6] },
+  ], cups: [{ x: 0.86, y: 0.93, c: '#F87171' }], switches: [] });
+
+  // 6. волны: три этажа холмиков
+  const wv: Pt[] = [[0.08, 0.05], [0.08, 0.12]];
+  [[0.18, 1], [0.45, -1], [0.72, 1]].forEach(([y0, dir], row) => {
+    for (let k = 0; k <= 30; k++) { const t = k / 30; wv.push([dir === 1 ? 0.08 + t * 0.84 : 0.92 - t * 0.84, y0 + t * 0.1 - Math.abs(Math.sin(t * Math.PI * 3)) * 0.06]); }
+    if (row < 2) wv.push([dir === 1 ? 0.92 : 0.08, y0 + 0.2]);
+  });
+  wv.push([0.86, 0.84], [0.84, 0.9]);
+  const wvBells: Bell[] = [];
+  { let total = 0; const acc = [0]; for (let i = 1; i < wv.length; i++) { total += Math.hypot(wv[i][0] - wv[i - 1][0], wv[i][1] - wv[i - 1][1]); acc.push(total); }
+    let n = 0; for (let i = 2; i < wv.length - 2; i++) { if (wv[i][1] > wv[i - 1][1] && wv[i][1] >= wv[i + 1][1]) { wvBells.push({ seg: 'a', at: acc[i] / total, f: NOTES[(n * 2) % NOTES.length], c: BELL_C[n % BELL_C.length] }); n++; } } }
+  boards.push({ segs: { a: { pts: wv, cup: 0 } }, start: 'a', bells: wvBells, cups: [{ x: 0.84, y: 0.93, c: '#34D399' }], switches: [] });
+
+  // 7. двойная развилка: две стрелки, три баночки
+  const t7: Pt[] = [[0.5, 0.05], [0.5, 0.12], [0.5, 0.2]];
+  const l7: Pt[] = [[0.5, 0.2], [0.28, 0.34], [0.26, 0.44]];
+  const ll7: Pt[] = [[0.26, 0.44], [0.08, 0.6], [0.12, 0.72], [0.14, 0.9]];
+  const lr7: Pt[] = [[0.26, 0.44], [0.44, 0.6], [0.4, 0.72], [0.44, 0.9]];
+  const r7: Pt[] = [[0.5, 0.2], [0.82, 0.36], [0.74, 0.52], [0.92, 0.7], [0.82, 0.9]];
+  boards.push({
+    segs: { t: { pts: t7, sw: { id: 's1', a: 'l', b: 'r' } }, l: { pts: l7, sw: { id: 's2', a: 'll', b: 'lr' } }, ll: { pts: ll7, cup: 0 }, lr: { pts: lr7, cup: 1 }, r: { pts: r7, cup: 2 } }, start: 't',
+    bells: [...bellsOn('ll', ll7, 0, [392, 440, 494]), ...bellsOn('lr', lr7, 0, [587, 659, 698]), ...bellsOn('r', r7, 0, [784, 880, 1046, 1175])],
+    cups: [{ x: 0.14, y: 0.93, c: '#F472B6' }, { x: 0.44, y: 0.93, c: '#60A5FA' }, { x: 0.82, y: 0.93, c: '#FBBF24' }],
+    switches: [{ id: 's1', x: 0.5, y: 0.2 }, { id: 's2', x: 0.26, y: 0.44 }],
+  });
+
+  // 8. песенка: колокольчики на поворотах играют «Twinkle, Twinkle, Little Star»
+  const tune = [523, 523, 784, 784, 880, 880, 784, 698, 698, 659, 659, 587, 587, 523];
+  const sg: Pt[] = [[0.5, 0.05], [0.5, 0.08]];
+  tune.forEach((_, k) => { sg.push([k % 2 ? 0.2 : 0.8, 0.12 + (k + 1) * 0.054]); });
+  sg.push([0.5, 0.9]);
+  const sgBells: Bell[] = [];
+  { let total = 0; const acc = [0]; for (let i = 1; i < sg.length; i++) { total += Math.hypot(sg[i][0] - sg[i - 1][0], sg[i][1] - sg[i - 1][1]); acc.push(total); }
+    tune.forEach((f, k) => sgBells.push({ seg: 'a', at: acc[k + 2] / total, f, c: BELL_C[k % BELL_C.length] })); }
+  boards.push({ segs: { a: { pts: sg, cup: 0 } }, start: 'a', bells: sgBells, cups: [{ x: 0.5, y: 0.93, c: '#FDE047' }], switches: [] });
+
+  // 9. гамма: длинный спуск до-ре-ми-фа-соль-ля-си-до
+  const scale = [523, 587, 659, 698, 784, 880, 988, 1046];
+  const gm: Pt[] = [[0.12, 0.05], [0.12, 0.1]];
+  scale.forEach((_, k) => { const x = k % 2 ? 0.14 : 0.86; gm.push([x, 0.14 + k * 0.095], [x, 0.14 + k * 0.095 + 0.03]); });
+  gm.push([0.5, 0.9]);
+  const gmBells: Bell[] = [];
+  { let total = 0; const acc = [0]; for (let i = 1; i < gm.length; i++) { total += Math.hypot(gm[i][0] - gm[i - 1][0], gm[i][1] - gm[i - 1][1]); acc.push(total); }
+    scale.forEach((f, k) => gmBells.push({ seg: 'a', at: acc[2 + k * 2] / total, f, c: BELL_C[k % BELL_C.length] })); }
+  boards.push({ segs: { a: { pts: gm, cup: 0 } }, start: 'a', bells: gmBells, cups: [{ x: 0.5, y: 0.93, c: '#22D3EE' }], switches: [] });
+
   return boards;
 })();
 
@@ -68,7 +131,7 @@ export const MarbleRun: React.FC<{ character: CharacterItem; soundEnabled: boole
   const [dim, setDim] = useState<{ w: number; h: number } | null>(null);
   const [bi, setBi] = useState(0);
   const [sw, setSw] = useState<Record<string, boolean>>({});
-  const [cups, setCups] = useState<string[][]>([[], []]);
+  const [cups, setCups] = useState<string[][]>([[], [], []]);
   const [lit, setLit] = useState<Record<number, number>>({});
   const balls = useRef<Ball[]>([]);
   const [, setTick] = useState(0);
@@ -154,7 +217,7 @@ export const MarbleRun: React.FC<{ character: CharacterItem; soundEnabled: boole
     balls.current.push({ id: idc.current++, seg: B.start, d: 0, v: geo.bh * 0.15, c });
     soundEngine.playGamePop(soundEnabled, 2);
   };
-  const nextBoard = () => { balls.current = []; setCups([[], []]); setLit({}); setSw({}); setBi((b) => b + 1); };
+  const nextBoard = () => { balls.current = []; setCups([[], [], []]); setLit({}); setSw({}); setBi((b) => b + 1); };
   const firstBall = useRef<HTMLButtonElement>(null);
   const now = performance.now();
 
@@ -233,7 +296,7 @@ export const MarbleRun: React.FC<{ character: CharacterItem; soundEnabled: boole
             style={{ width: 'min(13vmin, 76px)', height: 'min(13vmin, 76px)', fontSize: 'min(7vmin, 38px)' }}>➡️</button>
         </div>
       </div>
-      <GestureHint show={(cups[0]?.length ?? 0) + (cups[1]?.length ?? 0) === 0 && balls.current.length === 0} kind="tap" target={firstBall} />
+      <GestureHint show={cups.every((c) => c.length === 0) && balls.current.length === 0} kind="tap" target={firstBall} />
     </CookScreen>
   );
 };
