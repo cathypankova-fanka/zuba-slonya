@@ -170,7 +170,7 @@ export const TrainGame: React.FC<{ character: CharacterItem; soundEnabled: boole
                 </div>
               );
             })}
-            <div className="relative h-full" style={{ width: `calc(${unit} * 1.5)` }}><Loco spin={leaving} smoke={leaving || linked.length > 0} /></div>
+            <div className="relative h-full" style={{ width: `calc(${unit} * 1.5)`, transform: 'scaleX(-1)' /* фонарём вперёд, по ходу поезда */ }}><Loco spin={leaving} smoke={leaving || linked.length > 0} /></div>
           </div>
         </div>
 
