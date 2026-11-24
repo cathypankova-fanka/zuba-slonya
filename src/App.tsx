@@ -173,6 +173,7 @@ const MODE_TITLES: Record<AllGameMode, string> = {
   coins: 'Магазин с монетками',
   fishing: 'Рыбалка',
   lift: 'Лифт в замке',
+  train: 'Паровозик',
   rain: 'Дождик и лужи',
 };
 
