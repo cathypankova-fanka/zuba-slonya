@@ -196,7 +196,7 @@ export const DiceGame: React.FC<{ character: CharacterItem; soundEnabled: boolea
               }}>
                 {last ? <span className="leading-none" style={{ fontSize: 'min(13vmin, 92px)' }}>🏰</span>
                   : star ? <span className="leading-none" style={{ fontSize: 'min(5vmin, 34px)' }}>⭐</span>
-                  : <span className="font-black text-[#475569] leading-none" style={{ fontSize: k === 0 ? 'min(2.6vmin, 18px)' : 'min(4vmin, 28px)' }}>{k === 0 ? 'СТАРТ' : k + 1}</span>}
+                  : <span className="font-black text-[#475569] leading-none" style={{ fontSize: k === 0 ? 'min(2.6vmin, 18px)' : 'min(4vmin, 28px)' }}>{k === 0 ? 'СТАРТ' : k}</span>}
               </div>
             );
           })}
