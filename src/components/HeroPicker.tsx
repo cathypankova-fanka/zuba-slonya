@@ -9,7 +9,7 @@ export const HeroPicker: React.FC<{
   pickedId?: string | null;
 }> = ({ characters, selectedId, onPick, pickedId }) => (
   <div className="w-full max-w-[900px] max-h-full overflow-y-auto no-scrollbar bg-[#FFF3E0] rounded-[2rem] p-3 sm:p-5 shadow-2xl border-4 border-white">
-    <div className="grid grid-cols-5 gap-2.5 sm:gap-3.5">
+    <div className="grid grid-cols-6 sm:grid-cols-7 gap-2 sm:gap-3">
       {characters.map((c, i) => {
         const sel = c.id === (pickedId ?? selectedId);
         return (

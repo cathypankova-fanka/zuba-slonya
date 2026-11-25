@@ -211,6 +211,6 @@ export const CHARACTERS: CharacterItem[] = [
     imageSrc: '/assets/aistudio/pipa.webp',
     accentBg: '#FCE7F3',
     praiseSubject: 'Пипа хрюкает от радости!',
-    faceMaskAnchor: { y: 0.45, scale: 0.72 },
+    faceMaskAnchor: { y: 0.66, scale: 0.86 },
   },
 ];
