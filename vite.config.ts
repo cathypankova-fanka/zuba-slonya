@@ -88,13 +88,15 @@ export default defineConfig(() => {
               },
             },
             {
-              // Мультики из «Телевизора»: кэшируются целиком для офлайна,
-              // Range-запросы (перемотка) отдаются из кэша
+              // Мультики из «Телевизора»: заранее НЕ качаются. Приложение кладёт файл целиком в этот кэш,
+              // когда мультик начали смотреть (utils/tvCache.ts); отсюда он отдаётся и офлайн,
+              // Range-запросы (перемотка) нарезаются из кэша
               urlPattern: /\/assets\/tv\/.*\.mp4$/i,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'tv-videos',
                 rangeRequests: true,
+                matchOptions: { ignoreVary: true, ignoreSearch: true },
                 cacheableResponse: {
                   statuses: [200],
                 },

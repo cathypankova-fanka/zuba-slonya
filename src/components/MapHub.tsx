@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CharacterItem } from '../data/characters';
 import { AllGameMode, PLAY_MODES } from '../data/kitchenData';
 import { MAP_DECOR, MAP_MARKERS, MapMarker, START_POS, WORLD } from '../data/mapLayout';
+import { useCachedTv, useOnline } from '../utils/tvCache';
 
 /**
  * «Карта королевства»: большой мир, по которому можно ездить пальцем.
@@ -62,6 +63,10 @@ export const MapHub: React.FC<MapHubProps> = ({
 }) => {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [view, setView] = useState({ w: 800, h: 600 });
+  // Без сети «Телевизор» виден, только если хоть один мультик уже скачан
+  const online = useOnline();
+  const cachedTv = useCachedTv();
+  const markers = online || (cachedTv && cachedTv.size > 0) ? MAP_MARKERS : MAP_MARKERS.filter((m) => m.mode !== 'tv');
   const scale = clamp(Math.min(view.w, view.h) / 1250, 0.4, 1);
 
   const camLimits = useCallback(
@@ -274,7 +279,7 @@ export const MapHub: React.FC<MapHubProps> = ({
         ))}
 
         {/* Вывески игр */}
-        {MAP_MARKERS.map((m, i) => (
+        {markers.map((m, i) => (
           <button
             key={m.mode}
             type="button"

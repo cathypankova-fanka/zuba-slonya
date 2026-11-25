@@ -32,7 +32,6 @@ import { SimonGame } from './components/SimonGame';
 import { BigSmallGame } from './components/BigSmallGame';
 import { EmotionsGame } from './components/EmotionsGame';
 import { TvGame } from './components/TvGame';
-import { warmTvCache } from './utils/tvCache';
 import { MemoryGame } from './components/MemoryGame';
 import { ModeToolbar } from './components/ModeToolbar';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -189,10 +188,6 @@ const stageBackground = (mode: string) =>
     : '/assets/princess/bg/bg_playground.webp';
 
 export default function App() {
-  useEffect(() => {
-    warmTvCache();
-  }, []);
-
   const [screen, setScreen] = useState<'menu' | 'play'>(import.meta.env.DEV && new URLSearchParams(location.search).get('mode') ? 'play' : 'menu');
   const [splashDone, setSplashDone] = useState(import.meta.env.DEV && !!new URLSearchParams(location.search).get('mode'));
   // dev: ?mode=pizza открывает игру сразу (для проверки вёрстки)

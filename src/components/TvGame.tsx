@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
 import tvVideos from '../data/tvVideos.json';
+import { cacheTvVideo, useCachedTv, useOnline } from '../utils/tvCache';
 
 /**
  * «Телевизор»: мультфильмы про Зубу и Слоню. Без текста: выбираешь картинку-превью,
@@ -16,7 +17,7 @@ interface TvVideo {
   seconds: number;
 }
 
-const VIDEOS = tvVideos as TvVideo[];
+const ALL_VIDEOS = tvVideos as TvVideo[];
 
 interface TvGameProps {
   soundEnabled: boolean;
@@ -27,6 +28,10 @@ export const TvGame: React.FC<TvGameProps> = ({ soundEnabled }) => {
   const [playing, setPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const online = useOnline();
+  const cached = useCachedTv();
+  // Онлайн — все мультики; без сети — только скачанные (их можно открыть)
+  const VIDEOS = online ? ALL_VIDEOS : ALL_VIDEOS.filter((v) => cached?.has(v.src));
 
   useEffect(() => {
     setProgress(0);
@@ -44,7 +49,8 @@ export const TvGame: React.FC<TvGameProps> = ({ soundEnabled }) => {
   };
 
   if (current) {
-    const idx = VIDEOS.findIndex((v) => v.id === current.id);
+    const idx = Math.max(0, VIDEOS.findIndex((v) => v.id === current.id));
+    const next = () => setCurrent(VIDEOS.length ? VIDEOS[(idx + 1) % VIDEOS.length] : null);
     return (
       <div className="relative w-full h-full flex flex-col items-center gap-2 p-2 sm:p-4 toy-panel overflow-hidden select-none">
         <div className="w-full flex items-center justify-between shrink-0">
@@ -59,7 +65,7 @@ export const TvGame: React.FC<TvGameProps> = ({ soundEnabled }) => {
           <button
             type="button"
             aria-label="Следующий мультик"
-            onClick={() => setCurrent(VIDEOS[(idx + 1) % VIDEOS.length])}
+            onClick={next}
             className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#FF7A1A] border-[3px] border-white text-white shadow-[0_4px_0_#C2410C] flex items-center justify-center cursor-pointer active:translate-y-0.5"
           >
             <span className="text-2xl leading-none">⏭</span>
@@ -77,12 +83,14 @@ export const TvGame: React.FC<TvGameProps> = ({ soundEnabled }) => {
               playsInline
               muted={!soundEnabled}
               onPlay={() => setPlaying(true)}
+              // начали смотреть — сохраняем мультик целиком для офлайна
+              onPlaying={() => void cacheTvVideo(current.src)}
               onPause={() => setPlaying(false)}
               onTimeUpdate={(e) => {
                 const v = e.currentTarget;
                 setProgress(v.duration ? v.currentTime / v.duration : 0);
               }}
-              onEnded={() => setCurrent(VIDEOS[(idx + 1) % VIDEOS.length])}
+              onEnded={next}
               onClick={toggle}
               className="block max-w-full max-h-[62vh] cursor-pointer"
             />
