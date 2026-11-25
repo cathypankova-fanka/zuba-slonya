@@ -10,9 +10,14 @@ registerSW({
   immediate: true,
   onRegisteredSW(_url, reg) {
     if (!reg) return;
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && navigator.onLine) reg.update().catch(() => {});
-    });
+    const check = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine && !reg.installing) reg.update().catch(() => {});
+    };
+    document.addEventListener('visibilitychange', check);
+    // Новая версия качает сотни картинок; если сервер ответил ошибкой хоть на одну, установка срывается
+    // (скачанное сохраняется). Раньше следующая попытка была только при следующем открытии игры —
+    // и планшет мог днями сидеть на старой версии. Теперь докачиваем каждые 2 минуты, пока игра открыта.
+    window.setInterval(check, 2 * 60 * 1000);
   },
 });
 installNameVoice();
