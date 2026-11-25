@@ -5,18 +5,18 @@ import { RoundReplayOverlay } from './MiniGameShell';
 import { playVoice, whenVoiceIdle } from '../utils/voice';
 import { hasReactionAnim, reactionAnimUrl } from '../data/reactionAssets';
 
-/** Какие анимации-реакции больше всего похожи на лицо-эмоцию (по порядку предпочтения) */
+/** Какие видео-реакции похожи на лицо-эмоцию — после верного ответа герой «оживает» */
 const EMOTION_ANIMS: Record<string, string[]> = {
-  joy: ['dance', 'partypop', 'heli'],
-  laugh: ['raspberry', 'heli', 'dance'],
+  joy: ['dance', 'partypop', 'heli', 'singer', 'wave', 'headbang', 'superhero'],
+  laugh: ['raspberry', 'heli', 'jumpspin', 'dizzy', 'headbang', 'dance'],
   sad: [],
-  surprised: ['mindblown', 'bigeyes'],
-  scared: ['mindblown', 'hiccup'],
-  angry: ['raspberry', 'hot'],
-  sleepy: ['snorebubble'],
-  curious: ['bigeyes'],
-  proud: ['partypop', 'dance'],
-  shy: ['hiccup'],
+  surprised: ['mindblown', 'bigeyes', 'sneeze', 'hiccup', 'shrink', 'magic', 'burp'],
+  scared: ['iceblock', 'cold', 'hiccup', 'shrink', 'mindblown'],
+  angry: ['stomp', 'hot', 'raspberry', 'blow'],
+  sleepy: ['snorebubble', 'sleepy', 'fullbelly'],
+  curious: ['bigeyes', 'magic', 'dizzy', 'blow'],
+  proud: ['flex', 'superhero', 'partypop', 'dance'],
+  shy: ['kiss', 'peekaboo', 'hiccup'],
 };
 const pickAnimFor = (hero: string, emotion: string): string | null => {
   const pref = (EMOTION_ANIMS[emotion] ?? []).filter((a) => hasReactionAnim(hero, a));
@@ -55,16 +55,21 @@ const pickRandom = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)]
 
 function buildRounds(): Round[] {
   const allIds = EMOTIONS.map((e) => e.id);
-  const usedPairs = new Set<string>();
+  // Случайные пары «герой/эмоция» из всех ~190 лиц
+  const pairs = EMOTION_HEROES.flatMap((h) => HERO_EMOTIONS[h].map((e) => `${h}/${e}`));
+  const usedHeroes: string[] = [];
+  const usedEmotions: string[] = [];
   return Array.from({ length: ROUNDS }, () => {
-    // Герой случайный в каждом раунде; эмоция — из тех, что у него есть
-    let hero = pickRandom(EMOTION_HEROES);
-    let emotion = pickRandom(HERO_EMOTIONS[hero]);
-    for (let tries = 0; tries < 10 && usedPairs.has(`${hero}/${emotion}`); tries++) {
-      hero = pickRandom(EMOTION_HEROES);
-      emotion = pickRandom(HERO_EMOTIONS[hero]);
-    }
-    usedPairs.add(`${hero}/${emotion}`);
+    // в одной игре стараемся не повторять ни героя, ни эмоцию
+    const avoid = pairs.filter((p) => {
+      const [h, e] = p.split('/');
+      return usedHeroes.includes(h) || usedEmotions.includes(e);
+    });
+    const ok = pairs.filter((p) => !avoid.includes(p));
+    const pair = pickRandom(ok.length ? ok : pairs);
+    const [hero, emotion] = pair.split('/');
+    usedHeroes.push(hero);
+    usedEmotions.push(emotion);
     const others = allIds
       .filter((id) => id !== emotion)
       .sort(() => Math.random() - 0.5)

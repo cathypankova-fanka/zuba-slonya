@@ -36,6 +36,7 @@ export const REACTIONS: Record<string, Reaction> = {
   giggle_roll: { id: 'giggle_roll', emotion: 'laugh', motion: 'wobble', fx: ['😂', '✨', '🎈'] },
   spin_joy: { id: 'spin_joy', emotion: 'joy', motion: 'spin', fx: ['⭐', '✨', '🌟'] },
   wow_zoom: { id: 'wow_zoom', emotion: 'surprised', motion: 'zoom', fx: ['❗', '✨', '😮'] },
+  blow_cool: { id: 'blow_cool', anim: 'blow', emotion: 'curious', motion: 'sway', fx: ['💨', '🌬️', '✨'] },
   hot_blow: { anim: 'hot', id: 'hot_blow', emotion: 'surprised', motion: 'shake', fx: ['🔥', '💨', '🥵'] },
   brr_cold: { anim: 'cold', id: 'brr_cold', emotion: 'scared', motion: 'shake', fx: ['❄️', '🥶', '💧'] },
   food_coma: { anim: 'sleepy', id: 'food_coma', emotion: 'sleepy', motion: 'sway', fx: ['💤', '😴', '💤'] },
@@ -83,36 +84,60 @@ export type ReactionContext =
   | 'wash'
   | 'tap';
 
-const POOLS: Record<ReactionContext, string[]> = {
-  pizza: ['yum_jump', 'hot_blow', 'giggle_roll', 'proud_pose', 'dance', 'wow_zoom', 'chewing', 'flip', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
-  icecream: ['brr_cold', 'yum_jump', 'shy_blush', 'spin_joy', 'wow_zoom', 'giggle_roll', 'tickled', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
-  soup: ['hot_blow', 'yum_jump', 'food_coma', 'chewing', 'dance', 'sneaky', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
-  sandwich: ['wow_zoom', 'chewing', 'proud_pose', 'giggle_roll', 'flip', 'sneaky', 'yum_jump', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
-  drinks: ['burp', 'brr_cold', 'spin_joy', 'giggle_roll', 'dance', 'tickled', 'wow_zoom', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
-  cake: ['wow_zoom', 'shy_blush', 'spin_joy', 'dance', 'proud_pose', 'flip', 'yum_jump', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
-  feed_favorite: ['yum_jump', 'spin_joy', 'flip', 'dance', 'giggle_roll', 'wow_zoom', 'proud_pose', 'tickled', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
-  feed_neutral: ['thinking', 'shy_blush', 'chewing', 'food_coma', 'sneaky', 'peekaboo', 'wave', 'bigeyes', 'hiccup'],
-  celebrate: ['dance', 'spin_joy', 'flip', 'proud_pose', 'yum_jump', 'giggle_roll', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
-  wash: ['tickled', 'giggle_roll', 'brr_cold', 'shy_blush', 'spin_joy', 'wow_zoom', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
-  tap: ['tickled', 'giggle_roll', 'wow_zoom', 'sneaky', 'shy_blush', 'thinking', 'sneeze', 'hiccup', 'heli', 'bigeyes', 'dizzy', 'singer', 'flex', 'partypop', 'shrink', 'raspberry', 'peekaboo', 'snorebubble', 'kiss', 'mindblown', 'fullbelly', 'stomp', 'superhero', 'headbang', 'wave', 'iceblock', 'magic'],
+/** Видео-реакции, которые подходят только к определённым ситуациям */
+const ONLY_IN: Record<string, ReactionContext[]> = {
+  hot_blow: ['pizza', 'soup', 'sandwich', 'drinks', 'celebrate', 'tap'],
+  blow_cool: ['pizza', 'soup', 'sandwich', 'drinks', 'cake', 'celebrate', 'tap'],
+  brr_cold: ['icecream', 'drinks', 'wash', 'tap'],
+  iceblock: ['icecream', 'drinks', 'wash', 'tap', 'celebrate'],
+  food_coma: ['pizza', 'soup', 'sandwich', 'cake', 'feed_favorite', 'feed_neutral', 'tap'],
+  fullbelly: ['pizza', 'icecream', 'soup', 'sandwich', 'drinks', 'cake', 'feed_favorite', 'feed_neutral'],
+  burp: ['pizza', 'soup', 'sandwich', 'drinks', 'cake', 'feed_favorite', 'icecream'],
 };
+
+/** Картинки-эмоции без видео — для каждой ситуации свои */
+const STATIC_POOLS: Record<ReactionContext, string[]> = {
+  pizza: ['yum_jump', 'giggle_roll', 'proud_pose', 'wow_zoom', 'chewing'],
+  icecream: ['yum_jump', 'shy_blush', 'spin_joy', 'wow_zoom', 'giggle_roll', 'tickled'],
+  soup: ['yum_jump', 'chewing', 'sneaky', 'proud_pose'],
+  sandwich: ['wow_zoom', 'chewing', 'proud_pose', 'giggle_roll', 'sneaky', 'yum_jump'],
+  drinks: ['spin_joy', 'giggle_roll', 'tickled', 'wow_zoom'],
+  cake: ['wow_zoom', 'shy_blush', 'spin_joy', 'proud_pose', 'yum_jump'],
+  feed_favorite: ['yum_jump', 'spin_joy', 'giggle_roll', 'wow_zoom', 'proud_pose', 'tickled'],
+  feed_neutral: ['thinking', 'shy_blush', 'chewing', 'sneaky'],
+  celebrate: ['spin_joy', 'proud_pose', 'yum_jump', 'giggle_roll'],
+  wash: ['tickled', 'giggle_roll', 'shy_blush', 'spin_joy', 'wow_zoom'],
+  tap: ['tickled', 'giggle_roll', 'wow_zoom', 'sneaky', 'shy_blush', 'thinking'],
+};
+
+/** Для «не любимой» еды — только спокойные видео */
+const NEUTRAL_ANIMS = ['peekaboo', 'wave', 'bigeyes', 'hiccup', 'dizzy', 'snorebubble', 'food_coma', 'fullbelly', 'kiss', 'sneeze', 'shrink'];
+
+const ANIM_IDS = Object.values(REACTIONS).filter((r) => r.anim).map((r) => r.id);
+
+function animPool(context: ReactionContext): string[] {
+  const base = context === 'feed_neutral' ? NEUTRAL_ANIMS : ANIM_IDS;
+  return base.filter((id) => !ONLY_IN[id] || ONLY_IN[id].includes(context));
+}
 
 let lastId = '';
 
 /**
- * Случайная реакция для ситуации; не повторяет предыдущую подряд.
- * Если у героя есть готовые видео-реакции — выбираем в основном из них.
+ * Случайная реакция для ситуации (не повторяет предыдущую подряд). Если у героя есть
+ * видео-реакции — в основном (85%) берём любое из ВСЕХ его видео, подходящих к ситуации.
  */
 export function pickReaction(context: ReactionContext, heroId?: string): Reaction {
-  const base = POOLS[context].filter((id) => id !== lastId && REACTIONS[id]);
   const withAnim = heroId
-    ? base.filter((id) => {
-        const anim = REACTIONS[id].anim;
-        return anim ? hasReactionAnim(heroId, anim) : false;
-      })
+    ? animPool(context).filter((id) => hasReactionAnim(heroId, REACTIONS[id].anim!))
     : [];
-  const pool = withAnim.length > 0 && Math.random() < 0.85 ? withAnim : base;
-  const id = pool[Math.floor(Math.random() * pool.length)];
+  if (withAnim.length > 0 && Math.random() < 0.85) {
+    const fresh = withAnim.length > 1 ? withAnim.filter((x) => x !== lastId) : withAnim;
+    const id = fresh[Math.floor(Math.random() * fresh.length)];
+    lastId = id;
+    return REACTIONS[id];
+  }
+  const stat = STATIC_POOLS[context].filter((id) => id !== lastId);
+  const id = stat[Math.floor(Math.random() * stat.length)];
   lastId = id;
   return REACTIONS[id];
 }
