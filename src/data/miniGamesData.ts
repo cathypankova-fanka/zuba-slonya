@@ -402,6 +402,30 @@ export const CHARACTER_FAVORITES: Record<string, string[]> = {
     'sandwich/fillings/cheese',
     'cake/toppings/lollipop',
   ],
+  letka: [
+    'icecream/flavors/strawberry',
+    'cake/toppings/macaron',
+    'cake/toppings/raspberry',
+    'cake/toppings/lollipop',
+  ],
+  pyatnysh: [
+    'soup/ingredients/meatball',
+    'sandwich/fillings/cheese',
+    'icecream/flavors/vanilla',
+    'cake/toppings/strawberry',
+  ],
+  luchik: [
+    'sandwich/fillings/banana',
+    'icecream/garnishes/cookie',
+    'cake/toppings/blueberries',
+    'soup/ingredients/carrot',
+  ],
+  golubika: [
+    'cake/toppings/blueberries',
+    'icecream/flavors/bubblegum',
+    'cake/toppings/macaron',
+    'cake/toppings/strawberry',
+  ],
 };
 
 export const MINI_FOOD_POOL = Object.values(MINI_FOOD_ITEMS);
