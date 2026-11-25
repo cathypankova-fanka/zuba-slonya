@@ -72,6 +72,10 @@ export const MAP_MARKERS: MapMarker[] = [
   { mode: 'fishing', img: 'fishing', aria: 'Рыбалка', x: 9000, y: 2520 },
   { mode: 'lift', img: 'lift', aria: 'Лифт в замке', x: 4000, y: 800 },
   { mode: 'train', img: 'train', aria: 'Паровозик', x: 7250, y: 520 },
+  // Магазинные игры
+  { mode: 'shoplist', img: 'shoplist', aria: 'Покупатель со списком', x: 8670, y: 2020 },
+  { mode: 'shopheroes', img: 'shopheroes', aria: 'Герои-покупатели', x: 3230, y: 3660 },
+  { mode: 'delivery', img: 'delivery', aria: 'Доставка', x: 1000, y: 450 },
   { mode: 'dice', img: 'dice', aria: 'Кубик-ходилка', x: 2470, y: 3700 },
 ];
 
