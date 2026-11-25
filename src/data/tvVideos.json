@@ -1,5 +1,14 @@
 [
  {
+  "id": "nyami",
+  "title": "Нями-нями",
+  "src": "/assets/tv/nyami.mp4",
+  "poster": "/assets/tv/nyami_poster.webp",
+  "portrait": false,
+  "seconds": 118,
+  "mb": 6.3
+ },
+ {
   "id": "dance",
   "title": "Зуба и Слоня танцуют",
   "src": "/assets/tv/dance.mp4",
