@@ -205,7 +205,8 @@ export const LiftGame: React.FC<{ character: CharacterItem; soundEnabled: boolea
           </div>
           <div ref={panelRef} key={shake} className={`grid grid-cols-3 gap-[1.6vmin] rounded-[1.6rem] p-[2vmin] shadow-2xl ${shake ? 'animate-[shakeX_.35s]' : ''}`}
             style={{ background: 'linear-gradient(#94A3B8, #475569)', border: '4px solid #CBD5E1' }}>
-            {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((n) => (
+            {/* как в настоящем лифте: 1 2 3 сверху, дальше по порядку слева направо */}
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
               <button key={n} type="button" aria-label={String(n)} onClick={() => press(n)}
                 className="rounded-full font-black flex items-center justify-center active:scale-90 transition-all"
                 style={{

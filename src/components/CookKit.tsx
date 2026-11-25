@@ -273,7 +273,7 @@ export const Plate: React.FC<{
 
 // ---------------------------------------------------------------- подсказка-жест
 
-export type HintKind = 'tap' | 'drag' | 'circle' | 'swipe' | 'rub' | 'hold';
+export type HintKind = 'tap' | 'drag' | 'circle' | 'swipe' | 'rub' | 'hold' | 'stroke' | 'scan';
 
 /**
  * Показывает, через сколько после начала шага (и после бездействия) включать подсказку.
@@ -313,7 +313,9 @@ export const GestureHint: React.FC<{
   target: React.RefObject<Element | null>;
   from?: React.RefObject<Element | null>;
   itemSrc?: string;
-}> = ({ show, kind, target, from, itemSrc }) => {
+  /** не обводить цель кольцом (например, когда цель — ряд вариантов и кольцо «подсказало» бы один из них) */
+  noRing?: boolean;
+}> = ({ show, kind, target, from, itemSrc, noRing }) => {
   const handRef = useRef<HTMLDivElement>(null);
   const itemRef = useRef<HTMLImageElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
@@ -351,6 +353,14 @@ export const GestureHint: React.FC<{
         const k = t < 0.7 ? t / 0.7 : 1;
         x = cx - R * 0.8 + k * R * 1.6; y = cy - R * 0.5 + k * R;
         opacity = t > 0.8 ? (1 - t) / 0.2 : 1;
+      } else if (kind === 'stroke') {
+        // провести пальцем вдоль цели: сверху вниз (вертикальная) или слева направо (горизонтальная)
+        const k = t < 0.75 ? t / 0.75 : 1;
+        if (tr.height > tr.width) { x = cx; y = tr.top + k * tr.height; } else { x = tr.left + k * tr.width; y = cy; }
+        opacity = t > 0.85 ? (1 - t) / 0.15 : 1;
+      } else if (kind === 'scan') {
+        // рука плавно водит над рядом вариантов: «выбери одного»
+        x = cx + Math.sin(t * Math.PI * 2) * tr.width * 0.38; y = cy - tr.height * 0.15;
       } else if (kind === 'rub') {
         x = cx + Math.sin(t * Math.PI * 6) * R * 0.45; y = cy - R * 0.35 + t * R * 0.7;
       }
@@ -387,7 +397,7 @@ export const GestureHint: React.FC<{
   if (!show) return null;
   return createPortal(
     <div className="fixed inset-0 z-[55] pointer-events-none">
-      <div ref={ringRef} className="absolute rounded-full border-[5px] border-[#FFB800] animate-ping-soft" />
+      {!noRing && <div ref={ringRef} className="absolute rounded-full border-[5px] border-[#FFB800] animate-ping-soft" />}
       <div ref={trailRef} className="absolute border-dashed border-white/90" style={{ display: 'none' }} />
       {itemSrc && <img ref={itemRef} src={itemSrc} alt="" className="absolute left-0 top-0 w-[68px] h-[68px] object-contain opacity-0 drop-shadow-xl" />}
       <div ref={handRef} className="absolute left-0 top-0 w-20 h-20 sm:w-24 sm:h-24" style={{ opacity: 0 }}>{HAND}</div>

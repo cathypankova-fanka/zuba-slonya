@@ -9,14 +9,17 @@ import { Celebrate, HeroFace, randomHero, say, shuffle } from './PlayKit';
 import { ReactionHero } from './ReactionHero';
 
 /**
- * «Доставка»: собрать заказ героя в коробку → закрыть коробку → наклеить наклейку с портретом получателя →
+ * «Доставка»: собрать заказ героя в коробку → заклеить коробку скотчем (провести пальцем по 1–2 полоскам) → наклеить наклейку с портретом получателя →
  * довезти машинку до домика, в окошке которого этот герой (машинку можно тащить пальцем или нажать на домик) →
  * тук-тук, герой открывает посылку и радуется. Две посылки.
  */
 
 const ROUNDS = 2;
-type Phase = 'pack' | 'close' | 'sticker' | 'drive' | 'arrive';
-const STEPS: Phase[] = ['pack', 'close', 'sticker', 'drive', 'arrive'];
+type Phase = 'pack' | 'tape' | 'sticker' | 'drive' | 'arrive';
+const STEPS: Phase[] = ['pack', 'tape', 'sticker', 'drive', 'arrive'];
+type Strip = 'v' | 'h';
+const BINS = 12;
+const stripsFor = (round: number): Strip[] => (round === 0 ? ['v'] : ['v', 'h']);
 const HOUSE_X = [0.34, 0.6, 0.86];
 const HOUSE_COLORS = ['#FCA5A5', '#93C5FD', '#FDE68A'];
 
@@ -64,7 +67,12 @@ export const DeliveryGame: React.FC<{ character: CharacterItem; soundEnabled: bo
   const boxRef = useRef<HTMLDivElement>(null);
   const roadRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef<HTMLDivElement>(null);
-  const firstStickerRef = useRef<HTMLButtonElement>(null);
+  const stickersRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [tape, setTape] = useState<Record<Strip, boolean[]>>({ v: [], h: [] });
+  const lastTapeSound = useRef(0);
+  const tapeRef = useRef(tape);
+  tapeRef.current = tape;
   const drag = useRef<{ dx: number } | null>(null);
   const busy = useRef(false);
   const reaction = useMemo(() => pickReaction('celebrate', data.to.id), [data, round]);
@@ -72,7 +80,7 @@ export const DeliveryGame: React.FC<{ character: CharacterItem; soundEnabled: bo
 
   useEffect(() => {
     if (finished) return;
-    const v: Record<Phase, string | null> = { pack: round === 0 ? 'dl_start' : 'dl_next', close: 'dl_close', sticker: 'dl_sticker', drive: 'dl_drive', arrive: null };
+    const v: Record<Phase, string | null> = { pack: round === 0 ? 'dl_start' : 'dl_next', tape: 'dl_tape', sticker: 'dl_sticker', drive: 'dl_drive', arrive: null };
     const id = v[phase];
     if (!id) return;
     const t = window.setTimeout(() => say(id, soundEnabled), 350);
@@ -94,14 +102,36 @@ export const DeliveryGame: React.FC<{ character: CharacterItem; soundEnabled: bo
     const np = [...packed, g.id];
     setPacked(np);
     soundEngine.playGamePop(soundEnabled, 2 + np.length);
-    if (np.length === data.order.length) { soundEngine.playGameOk(soundEnabled); go('close'); }
+    if (np.length === data.order.length) { soundEngine.playGameOk(soundEnabled); go('tape'); }
   };
 
-  // ---- 2. закрыть коробку
-  const closeBox = () => {
-    if (phase !== 'close' || busy.current) return;
-    soundEngine.playGamePop(soundEnabled, 4);
-    setPhase('sticker');
+  // ---- 2. заклеить скотчем: ведём пальцем по полоске — скотч ложится там, где прошёл палец
+  const strips = stripsFor(round);
+  const stripDone = (k: Strip) => tape[k].filter(Boolean).length >= BINS - 2;
+  const nextStrip = strips.find((k) => !stripDone(k));
+  const tapeAt = (e: React.PointerEvent) => {
+    if (phase !== 'tape' || busy.current) return;
+    const r = boxRef.current!.getBoundingClientRect();
+    const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+    if (fx < -0.05 || fx > 1.05 || fy < -0.05 || fy > 1.05) return;
+    const hit: Strip | null = strips.includes('v') && Math.abs(fx - 0.5) < 0.14 && !stripDone('v') ? 'v'
+      : strips.includes('h') && Math.abs(fy - 0.5) < 0.16 && !stripDone('h') ? 'h' : null;
+    if (!hit) return;
+    const bin = Math.max(0, Math.min(BINS - 1, Math.floor((hit === 'v' ? fy : fx) * BINS)));
+    const cur = tapeRef.current;
+    if (cur[hit][bin]) return;
+    const nt = { ...cur, [hit]: Object.assign([...cur[hit]], { [bin]: true }) };
+    tapeRef.current = nt;
+    setTape(nt);
+    const now = performance.now();
+    if (now - lastTapeSound.current > 120) { soundEngine.playGamePop(soundEnabled, 1); lastTapeSound.current = now; }
+    if (strips.every((k) => nt[k].filter(Boolean).length >= BINS - 2)) {
+      // докладываем полоски целиком и дальше
+      setTape(Object.fromEntries(strips.map((k) => [k, Array(BINS).fill(true)])) as Record<Strip, boolean[]>);
+      soundEngine.playGameOk(soundEnabled);
+      sparkleBurst(r.left + r.width / 2, r.top + r.height / 2, 14);
+      go('sticker', 600);
+    }
   };
 
   // ---- 3. наклейка
@@ -152,15 +182,15 @@ export const DeliveryGame: React.FC<{ character: CharacterItem; soundEnabled: bo
     if (round + 1 >= ROUNDS) { setFinished(true); say('dl_done', soundEnabled); return; }
     setRound(round + 1);
     setData(makeRound([character.id, data.to.id]));
-    setPacked([]); setSticker(false); setTruckX(0.13); setPhase('pack');
+    setPacked([]); setSticker(false); setTape({ v: [], h: [] }); setTruckX(0.13); setPhase('pack');
   };
 
   const restart = () => {
-    setRound(0); setData(makeRound([character.id])); setPacked([]); setSticker(false); setTruckX(0.13);
+    setRound(0); setData(makeRound([character.id])); setPacked([]); setSticker(false); setTape({ v: [], h: [] }); setTruckX(0.13);
     setPhase('pack'); setFinished(false); setRunKey((k) => k + 1);
   };
 
-  const hintOn = useStepHint(`${round}-${phase}-${packed.length}`, 3000, 8000, !finished && phase !== 'arrive' && !driving);
+  const hintOn = useStepHint(`${round}-${phase}-${packed.length}-${nextStrip ?? ''}`, 3000, 8000, !finished && phase !== 'arrive' && !driving);
 
   if (finished) {
     return (
@@ -237,13 +267,13 @@ export const DeliveryGame: React.FC<{ character: CharacterItem; soundEnabled: bo
         dim={packed.includes(g.id)} wrong={wrong === g.id} />
     ))
     : phase === 'sticker'
-      ? data.stickers.map((c, i) => (
-        <button key={c.id} ref={i === 1 ? firstStickerRef : undefined} type="button" aria-label={`Наклейка ${c.name}`} onClick={(e) => pickSticker(c, e.currentTarget)}
+      ? <div ref={stickersRef} className="flex items-end justify-center gap-[2.4vmin]">{data.stickers.map((c) => (
+        <button key={c.id} type="button" aria-label={`Наклейка ${c.name}`} onClick={(e) => pickSticker(c, e.currentTarget)}
           className={`rounded-full overflow-hidden border-[5px] border-white shadow-xl active:scale-90 transition-transform ${wrong === c.id ? 'animate-[wiggle_0.4s]' : ''}`}
           style={{ width: 'clamp(70px, 15vmin, 130px)', height: 'clamp(70px, 15vmin, 130px)', background: c.accentBg, opacity: sticker && c.id === data.to.id ? 0.2 : 1 }}>
           <img src={c.imageSrc} alt="" draggable={false} className="w-full h-full object-cover object-top pointer-events-none" />
         </button>
-      ))
+      ))}</div>
       : undefined;
 
   const closed = phase !== 'pack';
@@ -258,9 +288,10 @@ export const DeliveryGame: React.FC<{ character: CharacterItem; soundEnabled: bo
         </div>
 
         {/* коробка: открыта (вид сверху) или закрыта, с наклейкой */}
-        <div ref={boxRef} role="button" aria-label="Коробка" onClick={closeBox}
-          className={`relative ${phase === 'close' ? 'cursor-pointer animate-[wiggle_1.6s_ease-in-out_infinite]' : ''}`}
-          style={{ width: BOX, height: `calc(${BOX} * 0.72)` }}>
+        <div ref={boxRef} aria-label="Коробка" data-phase={phase}
+          onPointerDown={(e) => { try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } tapeAt(e); }}
+          onPointerMove={(e) => { if (e.buttons || e.pointerType === 'touch') tapeAt(e); }}
+          className="relative" style={{ width: BOX, height: `calc(${BOX} * 0.72)`, touchAction: 'none' }}>
           {/* закрытая коробка — картон; открытая — светлый край, тёмное дно и клапаны по бокам */}
           <div className="absolute inset-0 rounded-xl" style={closed
             ? { background: 'linear-gradient(#D6A56A, #B7803F)', boxShadow: '0 14px 22px rgba(0,0,0,.3)' }
@@ -280,8 +311,17 @@ export const DeliveryGame: React.FC<{ character: CharacterItem; soundEnabled: bo
           )}
           {closed && (
             <>
-              <span className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[16%] bg-[#E9D2A6]/90" />
-              <span className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2%] bg-[#8B5A2B]/50" />
+              {/* шов между клапанами */}
+              <span className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[1.2%] bg-[#8B5A2B]/45" />
+              {/* полоски скотча: пунктир — куда клеить, скотч — где уже провели пальцем */}
+              {strips.map((k) => (
+                <div key={k} ref={k === nextStrip ? stripRef : undefined} className={`absolute ${k === 'v' ? 'left-1/2 -translate-x-1/2 top-0 bottom-0 w-[18%] flex flex-col' : 'top-1/2 -translate-y-1/2 left-0 right-0 h-[22%] flex flex-row'}`}>
+                  {!stripDone(k) && <span className="absolute inset-0 border-[4px] border-dashed border-white/90 rounded-sm" />}
+                  {Array.from({ length: BINS }).map((_, i) => (
+                    <span key={i} className="flex-1 transition-opacity duration-150" style={{ background: 'linear-gradient(90deg, rgba(254,243,199,.85), rgba(253,230,138,.9), rgba(254,243,199,.85))', opacity: tape[k][i] ? 1 : 0, boxShadow: tape[k][i] ? '0 1px 2px rgba(0,0,0,.15)' : undefined }} />
+                  ))}
+                </div>
+              ))}
               {sticker && (
                 <span className="absolute right-[8%] top-[10%] w-[34%] aspect-square rounded-full overflow-hidden border-[5px] border-white shadow-lg animate-pop-in rotate-[-8deg]" style={{ background: data.to.accentBg }}>
                   <img src={data.to.imageSrc} alt="" className="w-full h-full object-cover object-top" />
@@ -292,10 +332,13 @@ export const DeliveryGame: React.FC<{ character: CharacterItem; soundEnabled: bo
               )}
             </>
           )}
-          {phase === 'close' && <span className="absolute -top-[18%] left-1/2 -translate-x-1/2 text-[min(9vmin,64px)] animate-bounce">👇</span>}
+          {phase === 'tape' && <span className="absolute -right-[12%] -top-[14%] text-[min(10vmin,72px)] rotate-12 pointer-events-none">🧻</span>}
         </div>
       </div>
-      <GestureHint show={hintOn} kind={phase === 'pack' ? 'drag' : 'tap'} target={phase === 'sticker' ? firstStickerRef : boxRef} />
+      {phase === 'pack' && <GestureHint show={hintOn} kind="drag" target={boxRef} />}
+      {phase === 'tape' && <GestureHint show={hintOn} kind="stroke" target={stripRef} noRing />}
+      {/* выбор наклейки: рука водит над всеми тремя, никого не выделяя */}
+      {phase === 'sticker' && <GestureHint show={hintOn && !sticker} kind="scan" target={stickersRef} noRing />}
     </CookScreen>
   );
 };

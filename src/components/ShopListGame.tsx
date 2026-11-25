@@ -3,7 +3,7 @@ import { CHARACTERS, CharacterItem } from '../data/characters';
 import { GROCERY, Good, goodById } from '../data/shopGoods';
 import { soundEngine } from '../utils/soundEngine';
 import { playVoice, whenVoiceIdle } from '../utils/voice';
-import { CookScreen, GestureHint, sparkleBurst, useStepHint } from './CookKit';
+import { CookScreen, GestureHint, Plate, sparkleBurst, useStepHint } from './CookKit';
 import { Celebrate, HeroFace, randomHero, say, shuffle } from './PlayKit';
 
 /**
@@ -14,6 +14,23 @@ import { Celebrate, HeroFace, randomHero, say, shuffle } from './PlayKit';
  */
 
 const ROUNDS = 3;
+const COIN = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='52' r='42' fill='#B45309'/><circle cx='50' cy='48' r='42' fill='#FACC15'/><circle cx='50' cy='48' r='33' fill='#FDE047' stroke='#EAB308' stroke-width='4'/><path d='M50 30l5.5 11.5 12.5 1.5-9.2 8.6 2.4 12.4L50 58l-11.2 6 2.4-12.4-9.2-8.6 12.5-1.5z' fill='#EAB308'/><ellipse cx='36' cy='30' rx='10' ry='5' fill='#fff' opacity='.55' transform='rotate(-30 36 30)'/></svg>`);
+
+/** Касса: щель для монетки сверху, экранчик загорается «дзынь», когда оплатили */
+const Register: React.FC<{ paidFx: boolean; boxRef: React.Ref<HTMLDivElement>; w: string }> = ({ paidFx, boxRef, w }) => (
+  <div ref={boxRef} className={`relative ${paidFx ? 'animate-[bob_.5s_ease-in-out_2]' : ''}`} style={{ width: w, height: `calc(${w} * 0.86)` }}>
+    <svg viewBox="0 0 200 172" className="absolute inset-0 w-full h-full drop-shadow-xl">
+      <rect x="40" y="6" width="120" height="44" rx="10" fill={paidFx ? '#22C55E' : '#1E293B'} />
+      <text x="100" y="40" textAnchor="middle" fontSize="30" fontWeight="900" fill={paidFx ? '#fff' : '#FACC15'}>{paidFx ? '✓' : '🪙'}</text>
+      <rect x="92" y="50" width="16" height="16" fill="#475569" />
+      <path d="M18 66h164l12 70H6z" fill="#3B82F6" />
+      <rect x="74" y="72" width="52" height="10" rx="5" fill="#0F172A" />
+      {[0, 1, 2].map((r) => [0, 1, 2, 3].map((c) => <rect key={`${r}${c}`} x={36 + c * 34} y={92 + r * 13} width="24" height="9" rx="3" fill="#DBEAFE" />))}
+      <rect x="0" y="136" width="200" height="34" rx="8" fill="#1D4ED8" />
+      <rect x="70" y="146" width="60" height="8" rx="4" fill="#93C5FD" />
+    </svg>
+  </div>
+);
 const LEVELS: { kinds: number; min: number; max: number }[] = [
   { kinds: 2, min: 1, max: 2 },
   { kinds: 3, min: 1, max: 3 },
@@ -53,6 +70,8 @@ export const ShopListGame: React.FC<{ character: CharacterItem; soundEnabled: bo
   const [basket, setBasket] = useState<Record<string, number>>({});
   const [wrong, setWrong] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const registerRef = useRef<HTMLDivElement>(null);
   const [done, setDone] = useState(false);
   const busy = useRef(false);
   const basketRef = useRef<HTMLDivElement>(null);
@@ -72,10 +91,9 @@ export const ShopListGame: React.FC<{ character: CharacterItem; soundEnabled: bo
   }, [round, runKey]);
 
   const have = (id: string) => basket[id] ?? 0;
-  const complete = list.every((l) => have(l.id) === l.n);
 
   const add = (g: Good, el: HTMLElement) => {
-    if (paid || done) return;
+    if (paying || done) return;
     const line = list.find((l) => l.id === g.id);
     if (!line || have(g.id) >= line.n) {
       setWrong(g.id);
@@ -95,18 +113,28 @@ export const ShopListGame: React.FC<{ character: CharacterItem; soundEnabled: bo
   };
 
   const takeBack = (id: string) => {
-    if (paid || done || !have(id)) return;
+    if (paying || done || !have(id)) return;
     soundEngine.playGamePop(soundEnabled, 1);
     setBasket((b) => ({ ...b, [id]: (b[id] ?? 0) - 1 }));
   };
 
+  // всё собрано → платим: большую монетку тащим в кассу (или нажимаем — сама перелетит)
   const finishRound = () => {
+    window.setTimeout(() => {
+      soundEngine.playGameOk(soundEnabled);
+      setPaying(true);
+      say('sl_pay', soundEnabled);
+    }, 600);
+  };
+
+  const pay = () => {
+    if (!paying || paid) return;
     setPaid(true);
     window.setTimeout(() => {
       soundEngine.playGameReward(soundEnabled);
-      const r = basketRef.current?.getBoundingClientRect();
-      if (r) sparkleBurst(r.left + r.width / 2, r.top + r.height / 2, 18);
-      say('sl_done', soundEnabled);
+      const r = registerRef.current?.getBoundingClientRect();
+      if (r) sparkleBurst(r.left + r.width / 2, r.top + r.height * 0.3, 18);
+      say('sl_paid', soundEnabled);
       whenVoiceIdle(() => window.setTimeout(() => {
         if (round + 1 >= ROUNDS) { setDone(true); say('sl_all', soundEnabled); return; }
         setRound(round + 1);
@@ -114,16 +142,18 @@ export const ShopListGame: React.FC<{ character: CharacterItem; soundEnabled: bo
         setList(makeList(round + 1));
         setBasket({});
         setPaid(false);
+        setPaying(false);
       }, 700));
-    }, 700);
+    }, 450);
   };
 
   const restart = () => {
     setRound(0); setBuyer(randomHero(CHARACTERS, character.id)); setList(makeList(0));
-    setBasket({}); setPaid(false); setDone(false); setRunKey((k) => k + 1);
+    setBasket({}); setPaid(false); setPaying(false); setDone(false); setRunKey((k) => k + 1);
   };
 
-  const hintOn = useStepHint(`${round}-${Object.values(basket).reduce((a, b) => a + b, 0)}`, 3500, 9000, !paid && !done);
+  const hintOn = useStepHint(`${round}-${paying}-${Object.values(basket).reduce((a, b) => a + b, 0)}`, 3500, 9000, !paid && !done);
+  const coinRef = useRef<HTMLButtonElement>(null);
 
   if (done) {
     return (
@@ -138,14 +168,16 @@ export const ShopListGame: React.FC<{ character: CharacterItem; soundEnabled: bo
 
   return (
     <CookScreen stepKey={`r${round}`} stepIdx={round} total={ROUNDS} done={false}
+      tray={paying && !paid ? <Plate src={COIN} label="Монетка" onPick={pay} target={registerRef} onDrop={pay} size="clamp(110px, 24vmin, 190px)" plateRef={coinRef} /> : undefined}
       bg="linear-gradient(#FFF7ED 0%, #FFEDD5 60%, #FDBA74 60%, #FB923C 100%)">
       <div className={`w-full h-full flex ${portrait ? 'flex-col' : 'flex-row'} items-center justify-center gap-[2.5vmin] px-[2vmin] pb-[2vmin]`}>
         {/* покупатель и его список */}
         <div className={`flex ${portrait ? 'flex-row items-start' : 'flex-col items-center'} gap-[1.6vmin] shrink-0`}>
           <HeroFace hero={buyer} emotion={paid ? 'joy' : 'curious'} size={portrait ? 'min(22vw, 120px)' : 'min(17vmin, 140px)'} className="animate-pop-in" />
-          <div className="relative rounded-[1.2rem] bg-[#FFFDF7] shadow-xl border-2 border-[#E7DCC6] px-[2vmin] py-[1.4vmin] flex flex-col gap-[1vmin]"
+          <div className="relative rounded-[1.2rem] bg-[#FFFDF7] shadow-xl border-2 border-[#E7DCC6] px-[2vmin] py-[1.4vmin] flex flex-col gap-[1vmin]" data-list
             style={{ backgroundImage: 'repeating-linear-gradient(transparent 0 calc(min(9vmin,64px) - 2px), #DBEAFE calc(min(9vmin,64px) - 2px) min(9vmin,64px))' }}>
-            <span className="absolute -top-[1.8vmin] left-1/2 -translate-x-1/2 text-[min(5vmin,34px)]">📝</span>
+            {/* значок «список» — отдельной строкой сверху, не поверх строк */}
+            <span className="self-center leading-none -mb-[0.4vmin]" style={{ fontSize: 'min(5vmin, 34px)' }}>📝</span>
             {list.map((l) => {
               const g = goodById(l.id);
               const ok = have(l.id) === l.n;
@@ -162,8 +194,9 @@ export const ShopListGame: React.FC<{ character: CharacterItem; soundEnabled: bo
         </div>
 
         <div className="flex flex-col items-center gap-[2vmin] min-w-0">
+          {paying && <Register paidFx={paid} boxRef={registerRef} w={portrait ? 'min(52vw, 260px)' : 'min(34vmin, 280px)'} />}
           {/* полки магазина */}
-          <div ref={shelfRef} className="rounded-[1.6rem] p-[1.4vmin] shadow-2xl"
+          {!paying && <div ref={shelfRef} className="rounded-[1.6rem] p-[1.4vmin] shadow-2xl"
             style={{ background: 'linear-gradient(#A16207, #854D0E)' }}>
             <div className={`grid ${portrait ? 'grid-cols-3' : 'grid-cols-5'} gap-[1.2vmin]`}>
               {shelf.map((g) => (
@@ -174,7 +207,7 @@ export const ShopListGame: React.FC<{ character: CharacterItem; soundEnabled: bo
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           {/* корзинка: нажать на покупку — вынуть обратно */}
           <div ref={basketRef} className="relative flex items-center justify-center flex-wrap gap-[0.6vmin] rounded-b-[2.4rem] rounded-t-[1rem] px-[2vmin] py-[1vmin]"
@@ -187,11 +220,12 @@ export const ShopListGame: React.FC<{ character: CharacterItem; soundEnabled: bo
               </button>
             )))}
             {Object.values(basket).every((v) => !v) && <span className="text-[min(7vmin,48px)] opacity-80">🧺</span>}
-            {complete && <span className="absolute -right-[2vmin] -top-[3vmin] text-[min(8vmin,56px)] animate-bounce">🪙</span>}
           </div>
         </div>
       </div>
-      <GestureHint show={hintOn} kind="tap" target={shelfRef} />
+      {paying
+        ? <GestureHint show={hintOn && !paid} kind="drag" from={coinRef} target={registerRef} itemSrc={COIN} />
+        : <GestureHint show={hintOn} kind="tap" target={shelfRef} />}
     </CookScreen>
   );
 };
