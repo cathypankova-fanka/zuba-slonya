@@ -199,7 +199,7 @@ export default function App() {
   const devMode = import.meta.env.DEV ? (new URLSearchParams(location.search).get('mode') as AllGameMode | null) : null;
   const [gameMode, setGameMode] = useState<AllGameMode>(devMode ?? 'face');
   const [randomHero, setRandomHero] = useState<(typeof CHARACTERS)[number] | null>(null);
-  const [selectedCharacterId, setSelectedCharacterId] = useState<string>('baby');
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string>((import.meta.env.DEV && new URLSearchParams(location.search).get('hero')) || 'baby');
 
   const [toolMode, setToolMode] = useState<ToolMode>('paint');
   const [selectedColor, setSelectedColor] = useState<string>(PAINT_COLORS[0].hex);

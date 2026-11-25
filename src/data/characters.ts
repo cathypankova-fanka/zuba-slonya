@@ -204,4 +204,13 @@ export const CHARACTERS: CharacterItem[] = [
     praiseSubject: 'Каролина сияет от счастья!',
     faceMaskAnchor: { y: 0.51, scale: 0.96 },
   },
+  {
+    id: 'pipa',
+    name: 'Пипа',
+    category: 'family',
+    imageSrc: '/assets/aistudio/pipa.webp',
+    accentBg: '#FCE7F3',
+    praiseSubject: 'Пипа хрюкает от радости!',
+    faceMaskAnchor: { y: 0.45, scale: 0.72 },
+  },
 ];

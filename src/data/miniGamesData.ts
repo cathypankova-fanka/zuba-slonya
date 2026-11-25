@@ -396,6 +396,12 @@ export const CHARACTER_FAVORITES: Record<string, string[]> = {
     'icecream/flavors/vanilla',
     'cake/toppings/raspberry',
   ],
+  pipa: [
+    'icecream/flavors/strawberry',
+    'cake/toppings/strawberry',
+    'sandwich/fillings/cheese',
+    'cake/toppings/lollipop',
+  ],
 };
 
 export const MINI_FOOD_POOL = Object.values(MINI_FOOD_ITEMS);
